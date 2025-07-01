@@ -1,9 +1,10 @@
-cmake_minimum_required(VERSION 4.0)
-project(client)
+add_executable(client
+    main.cpp
+    socket.cpp
+    websocket.cpp
+)
 
 find_package(websocketpp REQUIRED)
+target_link_libraries(client PUBLIC websocketpp::websocketpp)
 
-add_executable(${PROJECT_NAME} 
-    ${PROJECT_SOURCE_DIR}/main.cpp
-    ${PROJECT_SOURCE_DIR}/websocket.cpp
-)
+set_property(TARGET client PROPERTY OUTPUT_NAME wsp-client)

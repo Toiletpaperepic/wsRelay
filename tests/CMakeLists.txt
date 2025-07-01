@@ -1,5 +1,5 @@
 macro(endtest test)    
-    message(STATUS "adding test ${test}")
+    message(STATUS "Adding test ${test}")
     set_property(TARGET ${test} PROPERTY OUTPUT_NAME wsp-${test})
 
     add_test(NAME ${test} COMMAND ${test})

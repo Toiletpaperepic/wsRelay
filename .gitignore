@@ -1,4 +1,4 @@
 server/target
-server/Cargo.locks
+server/Cargo.lock
 .cache
 build

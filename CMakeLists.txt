@@ -5,5 +5,5 @@ project(wsp)
 add_subdirectory(client)
 add_subdirectory(server)
 
-# include(CTest)
-# add_subdirectory(tests)
+include(CTest)
+add_subdirectory(tests)

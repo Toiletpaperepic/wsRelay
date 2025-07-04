@@ -7,6 +7,5 @@ ExternalProject_Add(server
     CONFIGURE_COMMAND ""
     BUILD_COMMAND ${PROGRAM_CARGO} build --manifest-path ${CMAKE_CURRENT_SOURCE_DIR}/Cargo.toml --target-dir ${CMAKE_CURRENT_BINARY_DIR} $<IF:$<CONFIG:Release>,--release,--bins>
     INSTALL_COMMAND ""
-    BUILD_JOB_SERVER_AWARE ON
     USES_TERMINAL_BUILD ON
 )

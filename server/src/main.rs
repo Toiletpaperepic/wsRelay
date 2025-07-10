@@ -13,8 +13,6 @@ async fn connect(ws: WebSocket) -> ws::Channel<'static> {
         let mut serverhost = TcpStream::connect("localhost:25565").await?;
         let mut buffer = vec![0; 1024];
 
-        // websocket_stream.send("hello, world!".into()).await?;
-
         loop {
             info!("loop");
             rocket::tokio::select! {

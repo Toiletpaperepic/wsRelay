@@ -17,7 +17,12 @@ static client c;
 void on_message(client* c, websocketpp::connection_hdl hdl, message_ptr msg) {
     websocketpp::lib::error_code errorcode;
 
-    // start sending packets first
+    if (msg->get_opcode() == websocketpp::frame::opcode::binary) {
+        printf("Got payload! %s | %zu\n", msg->get_payload().c_str(), msg->get_payload().size());
+
+        send(clientSocket, msg->get_payload().data(), msg->get_payload().size(), 0);
+    }
+
     void * buffer[1024] = {0};
     recv(clientSocket, buffer, sizeof(buffer), 0);
 
@@ -26,30 +31,24 @@ void on_message(client* c, websocketpp::connection_hdl hdl, message_ptr msg) {
     printf("wsp-client: Message from client: %s\n", (char *)buffer);
 
     c->send(hdl, buffer, sizeof(buffer), websocketpp::frame::opcode::binary, errorcode);
-
-    if (msg->get_opcode() == websocketpp::frame::opcode::binary) {
-        printf("Got payload! %s | %zu\n", msg->get_payload().c_str(), msg->get_payload().size());
-
-        send(clientSocket, msg->get_payload().data(), msg->get_payload().size(), 0);
-    }
-
-
-    // if (msg->get_opcode() == websocketpp::frame::opcode::text) {
-    //     printf("Got payload! %s\n", msg->get_payload().c_str());
-    // } else {
-    //     printf("Got payload! %s\n", websocketpp::utility::to_hex(msg->get_payload()).c_str());
-    // }
-    
-    // c->send(hdl, "cock", websocketpp::frame::opcode::binary, errorcode);
-    // c->close(hdl, websocketpp::close::status::normal, "done");
 }
 
 void on_connect(client* c, websocketpp::connection_hdl hdl) {
+    websocketpp::lib::error_code errorcode;
     printf("Websocket conection ready! Now starting local socket connection...\n");
     int fd = socket_bind(INADDR_ANY, 54332);
     printf("bind...");
     clientSocket = socket_listen(fd);
     printf("listening...\n");
+
+    void * buffer[1024] = {0};
+    recv(clientSocket, buffer, sizeof(buffer), 0);
+
+    // TODO: change later
+    printf("Got a message!\n");
+    printf("wsp-client: Message from client: %s\n", (char *)buffer);
+
+    c->send(hdl, buffer, sizeof(buffer), websocketpp::frame::opcode::binary, errorcode);
 }
 
 void connect(std::string url) {

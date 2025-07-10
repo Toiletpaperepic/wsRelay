@@ -18,11 +18,14 @@ void on_message(client* c, websocketpp::connection_hdl hdl, message_ptr msg) {
     websocketpp::lib::error_code errorcode;
 
     // start sending packets first
-    char buffer[1024] = {0};
+    void * buffer[1024] = {0};
     recv(clientSocket, buffer, sizeof(buffer), 0);
-    printf("Message from client: %s\n", buffer);
 
-    c->send(hdl, buffer, websocketpp::frame::opcode::binary, errorcode);
+    // TODO: change later
+    printf("Got a message!\n");
+    printf("wsp-client: Message from client: %s\n", (char *)buffer);
+
+    c->send(hdl, buffer, sizeof(buffer), websocketpp::frame::opcode::binary, errorcode);
 
     if (msg->get_opcode() == websocketpp::frame::opcode::binary) {
         printf("Got payload! %s | %zu\n", msg->get_payload().c_str(), msg->get_payload().size());
@@ -43,8 +46,10 @@ void on_message(client* c, websocketpp::connection_hdl hdl, message_ptr msg) {
 
 void on_connect(client* c, websocketpp::connection_hdl hdl) {
     printf("Websocket conection ready! Now starting local socket connection...\n");
-    clientSocket = socket_listen(socket_bind(INADDR_ANY, 8080));
-    printf("done!\n");
+    int fd = socket_bind(INADDR_ANY, 54332);
+    printf("bind...");
+    clientSocket = socket_listen(fd);
+    printf("listening...\n");
 }
 
 void connect(std::string url) {

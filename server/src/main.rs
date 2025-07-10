@@ -13,33 +13,36 @@ async fn connect(ws: WebSocket) -> ws::Channel<'static> {
         let mut serverhost = TcpStream::connect("localhost:25565").await?;
         let mut buffer = vec![0; 1024];
 
-        websocket_stream.send("hello, world!".into()).await?;
+        // websocket_stream.send("hello, world!".into()).await?;
 
         loop {
-            let serverhost_bytes = serverhost.read(&mut buffer);
-            let serverhost_bytes = serverhost_bytes.await?;
-
-            if serverhost_bytes > 0 {
-                websocket_stream.send(Message::binary(&buffer[0..serverhost_bytes])).await?;
-            } else {
-                websocket_stream.close(None).await?
-            }
-
-            if let Some(websocket_message) = websocket_stream.next().await {
-                let websocket_message = websocket_message?;
-
-                if websocket_message.is_binary() {
-                    serverhost.write(&websocket_message.into_data()).await?;
-                } else if websocket_message.is_close() {
-                    websocket_stream.close(None).await?;
-                    // drop(serverhost);
+            info!("loop");
+            rocket::tokio::select! {
+                message = websocket_stream.next() => {
+                    if let Some(message) = message {
+                        let message = message?;
+                        info!("GOT MESSAGE!");
+                        if message.is_binary() {
+                            serverhost.write_all(&Message::binary(message).into_data()).await?;
+                        } else if message.is_close() {
+                            websocket_stream.close(None).await?;
+                            return Ok(());
+                        }
+                    } else {
+                        error!("No packet received from websocket");
+                    }
+                },
+                data_bytes = serverhost.read(&mut buffer) => {
+                    let data_bytes = data_bytes?;
+                    if data_bytes > 0 {
+                        websocket_stream.send(Message::binary(&buffer[0..data_bytes])).await?;
+                    } else {
+                        info!("TCP/Unix stream closed");
+                        websocket_stream.close(None).await?;
+                    }
                 }
-            } else {
-                error!("No packet received from websocket");
             }
         }
-        
-        // Ok(())
     }))
 }
 

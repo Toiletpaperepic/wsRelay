@@ -67,7 +67,7 @@ int main() {
                 recv(clientSocket, buffer, sizeof(buffer), 0);
                 printf("wsp-connection-test: Message from client: %s\n", buffer);
                 
-                if (testmesssage == buffer) {
+                if (strcmp(testmesssage, buffer)) {
                     printf("Passed!\n");
                 }
                 

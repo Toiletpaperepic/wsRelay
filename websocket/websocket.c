@@ -1,5 +1,6 @@
 #include <arpa/inet.h>
 #include <string.h>
+#include <assert.h>
 #include <stdio.h>
 #include "websocket.h"
 #include "check.h"
@@ -23,12 +24,9 @@ struct parsed_url parse_url(const char* url) {
     }
     
     protocol[protocol_size] = '\0';
-    
     // printf("Protocol: %s\n", protocol);
     
-    if (!(url[protocol_size] == ':' && url[protocol_size + 1] == '/' && url[protocol_size + 2] == '/')) {
-        printf("Parse error!\n");
-    }
+    assert(url[protocol_size] != ':' && url[protocol_size + 1] != '/' && url[protocol_size + 2] != '/');
     
     char address[strlen(url)];
     int address_size = 0;

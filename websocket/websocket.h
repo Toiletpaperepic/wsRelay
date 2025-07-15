@@ -1,15 +1,4 @@
-enum protocol_type {
-    wss,
-    ws,
-    unknown,
-};
+#include "parse_url.h"
 
-struct parsed_url {
-    enum protocol_type protocol;
-    const char* address;
-    int port;
-    const char* path;
-};
-
-int websocket_connect(struct parsed_url purl);
-struct parsed_url parse_url(const char* url);
+int websocket_connect(struct parsed_url* purl);
+void make_http_header(struct parsed_url* url, char* message);

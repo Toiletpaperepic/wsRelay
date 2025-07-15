@@ -15,6 +15,13 @@ int websocket_connect(struct parsed_url* purl) {
     serverAddress.sin_addr.s_addr = addr.s_addr;
     
     check2(connect(fd, (struct sockaddr*)&serverAddress, sizeof(serverAddress)) < 0);
+
+    // tell the server to upgrade the connection 
+    char message[1024] = ""; 
+    make_http_header(purl, message);
+
+    printf("Sending message: %s\n", message);
+    check(send(fd, message, strlen(message), 0) < 0);
     
     return fd;
 }
@@ -35,6 +42,7 @@ void make_http_header(struct parsed_url* url, char* message) {
     // Accept:
     strcat(message, "Accept: */*\n");
 
+    // Upgrade: 
     // strcat(message, "Upgrade: websocket\n");
 
     // Connection:

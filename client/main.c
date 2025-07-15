@@ -1,9 +1,3 @@
-#include <sys/socket.h>
-#include <string.h>
-#include <unistd.h>
-#include <stdio.h>
-#include "websocket.h"
-#include "check.h"
 #include "main.h"
 
 int main(int argc, char* argv[]) {
@@ -27,18 +21,12 @@ int main(int argc, char* argv[]) {
     struct parsed_url url = parse_url("ws://localhost:8000/connect");
     int connection = websocket_connect(&url);
 
-    char message[1024] = ""; 
-    make_http_header(&url, message);
-
-    printf("Sending message: %s\n", message);
-    send(connection, message, strlen(message), 0);
-
     char buffer[1024] = {};
-    recv(connection, buffer, sizeof(buffer), 0);
+    check(recv(connection, buffer, sizeof(buffer), 0) < 0);
     printf("%s: message from server %s\n", argv[0], buffer);
     memset(buffer, '\0', sizeof(buffer));
 
-    recv(connection, buffer, sizeof(buffer), 0);
+    check(recv(connection, buffer, sizeof(buffer), 0) < 0);
     printf("%s: message from server %s\n", argv[0], buffer);
     memset(buffer, '\0', sizeof(buffer));
 

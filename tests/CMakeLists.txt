@@ -4,5 +4,6 @@ macro(endtest test)
     add_test(NAME ${test} COMMAND ${test})
 endmacro()
 
-
-add_subdirectory(Connection)
+if(BUILD_SERVER)
+    add_subdirectory(Connection)
+endif()

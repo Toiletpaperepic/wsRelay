@@ -1,6 +1,7 @@
 #include "main.h"
 
 int main(int argc, char* argv[]) {
+    srand(time(NULL));
     // printf("Starting local connection...\n");
 
     // int socket = socket_bind(INADDR_ANY, 25565);
@@ -18,7 +19,7 @@ int main(int argc, char* argv[]) {
 
     printf("Starting websocket connection...\n");
 
-    struct parsed_url url = parse_url("ws://localhost:8000/connect");
+    struct parsed_url url = parse_url("ws://127.0.0.1:8000/connect");
     int connection = websocket_connect(&url);
 
     char buffer[1024] = {};

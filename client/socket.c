@@ -1,5 +1,4 @@
 #include <unistd.h>
-#include <stdio.h>
 #include "socket.h"
 #include "check.h"
 

@@ -1,13 +1,13 @@
 enum protocol_type {
-    wss,
-    ws,
     unknown,
+    ws,
+    wss,
 };
 
 struct parsed_url {
     enum protocol_type protocol;
     const char* address;
-    int port;
+    unsigned int port;
     const char* path;
 };
 

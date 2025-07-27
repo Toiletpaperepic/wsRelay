@@ -1,3 +1,8 @@
 #include "parse_url.h"
 
-int websocket_connect(struct parsed_url* purl);
+struct connection {
+    struct parsed_url url;
+    int fd;
+};
+
+struct connection websocket_connect(struct parsed_url purl);

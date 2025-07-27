@@ -19,19 +19,18 @@ int main(int argc, char* argv[]) {
 
     printf("Starting websocket connection...\n");
 
-    struct parsed_url url = parse_url("ws://127.0.0.1:8000/connect");
-    int connection = websocket_connect(&url);
+    struct connection connection = websocket_connect(parse_url("ws://127.0.0.1:8000/connect"));
 
     char buffer[1024] = {};
-    check(recv(connection, buffer, sizeof(buffer), 0) < 0);
+    check(recv(connection.fd, buffer, sizeof(buffer), 0) < 0);
     printf("%s: message from server %s\n", argv[0], buffer);
     memset(buffer, '\0', sizeof(buffer));
 
-    check(recv(connection, buffer, sizeof(buffer), 0) < 0);
+    check(recv(connection.fd, buffer, sizeof(buffer), 0) < 0);
     printf("%s: message from server %s\n", argv[0], buffer);
     memset(buffer, '\0', sizeof(buffer));
 
-    close(connection);
+    close(connection.fd);
 
     return 0;
 }

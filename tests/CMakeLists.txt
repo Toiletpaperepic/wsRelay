@@ -5,5 +5,5 @@ macro(endtest test)
 endmacro()
 
 if(BUILD_SERVER)
-    add_subdirectory(Connection)
+    add_subdirectory(connection)
 endif()

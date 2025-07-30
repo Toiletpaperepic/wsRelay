@@ -9,17 +9,16 @@
 #include "websocket.h"
 #include "check.h"
 
-// i don't really know where to find info so 
 // https://en.wikipedia.org/wiki/WebSocket#Protocol
 
-void make_http_header(const char* path, const char* address, char* message) {
+void make_http_header(struct connection con, char* message) {
     strcat(message, "GET ");
-    strcat(message, path);
+    strcat(message, con.url.path);
     strcat(message, " HTTP/1.1\n");
 
     // Host:
     strcat(message, "Host: ");
-    strcat(message, address);
+    strcat(message, con.url.address);
     strcat(message, "\n");
 
     // User Agent:
@@ -37,12 +36,12 @@ void make_http_header(const char* path, const char* address, char* message) {
     // WebSocket Version: 
     strcat(message, "Sec-WebSocket-Version: 13\n");
 
-    char key[1024] = "";
     int nonce = rand();
     // i don't know whats worse, hard coding or this.
     char src[(int)floor (log10 (abs (nonce))) + 1 + 1]; 
     sprintf(src, "%d", nonce);
-    base64_encode_c(key, src);
+
+    const char* key = base64_encode_c(src);
     
     // WebSocket Key: 
     strcat(message, "Sec-WebSocket-Key: ");
@@ -73,7 +72,7 @@ struct connection websocket_connect(struct parsed_url purl) {
 
     // tell the server to upgrade the connection 
     char message[1024] = ""; 
-    make_http_header(con.url.path, con.url.address, message);
+    make_http_header(con, message);
 
     printf("Sending message: %s\n", message);
     check(send(fd, message, strlen(message), 0) < 0);

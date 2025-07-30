@@ -1,1 +1,1 @@
-void base64_encode_c(char* sdist, const char* s);
+const char* base64_encode_c(const char* src);

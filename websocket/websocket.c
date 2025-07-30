@@ -36,7 +36,9 @@ void make_http_header(struct connection con, char* message) {
     // WebSocket Version: 
     strcat(message, "Sec-WebSocket-Version: 13\n");
 
-    int nonce = rand();
+    __uint128_t nonce;
+    getrandom(&nonce, sizeof(__uint128_t), 0);
+
     // i don't know whats worse, hard coding or this.
     char src[(int)floor (log10 (abs (nonce))) + 1 + 1]; 
     sprintf(src, "%d", nonce);

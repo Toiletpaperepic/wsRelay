@@ -1,11 +1,11 @@
-#include <openssl/sha.h>
-#include <arpa/inet.h>
 #include <base64-cstring.h>
+#include <sys/random.h>
+#include <arpa/inet.h>
+#include <assert.h>
 #include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
-#include <math.h>
 #include "websocket.h"
 #include "check.h"
 
@@ -36,20 +36,27 @@ void make_http_header(struct connection con, char* message) {
     // WebSocket Version: 
     strcat(message, "Sec-WebSocket-Version: 13\n");
 
-    __uint128_t nonce;
-    getrandom(&nonce, sizeof(__uint128_t), 0);
+    char nonce[16 + 1];
+    getrandom(&nonce, sizeof(nonce), 0);
 
-    // i don't know whats worse, hard coding or this.
-    char src[(int)floor (log10 (abs (nonce))) + 1 + 1]; 
-    sprintf(src, "%d", nonce);
+    for (int i = 0; i < sizeof(nonce); i++) {
+        while (nonce[i] == '\0') {
+            getrandom(&nonce[i], sizeof(char), 0);
+        }
+    }
 
-    const char* key = base64_encode_c(src);
+    nonce[sizeof(nonce) - 1] = '\0';
+    const char* key = base64_encode_c((const char*)&nonce);
+
+    assert(strlen(key) == 24);
     
     // WebSocket Key: 
     strcat(message, "Sec-WebSocket-Key: ");
     strcat(message, key);
     strcat(message, "\n");
     
+    free((void*)key);
+
     // Blank Line (end of request)
     strcat(message, "\n");
 }
@@ -77,11 +84,15 @@ struct connection websocket_connect(struct parsed_url purl) {
     make_http_header(con, message);
 
     printf("Sending message: %s\n", message);
-    check(send(fd, message, strlen(message), 0) < 0);
+    websocket_send(con, message, sizeof(message));
 
     return con;
 }
 
 void websocket_send(struct connection con, void* buffer, size_t size) {
-    check(send(con.fd, buffer, strlen(buffer), 0) < 0);
+    check(send(con.fd, buffer, size, 0) < 0);
+}
+
+void websocket_recv(struct connection con, void* buffer, size_t size) {
+    check(recv(con.fd, buffer, size, 0) < 0);
 }

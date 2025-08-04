@@ -1,5 +1,6 @@
 #[macro_use] extern crate rocket;
-use rocket::futures::{StreamExt, SinkExt};
+use rocket::futures::SinkExt;
+use ws::Message;
 
 #[get("/")]
 fn index() -> &'static str {
@@ -46,9 +47,11 @@ fn index() -> &'static str {
 #[get("/connect")]
 async fn connect(ws: ws::WebSocket) -> ws::Channel<'static> {
     ws.channel(move |mut stream| Box::pin(async move {
-        while let Some(message) = stream.next().await {
-            let _ = stream.send(message?).await;
-        }
+        let message = format!("{} hello world {}\0", rand::random::<u64>(), rand::random::<u64>());
+        info!("message: {}, message length: {}", message, message.len());
+
+        let _ = stream.send(Message::Text(message)).await;
+        let _ = stream.send(Message::Close(None));
 
         Ok(())
     }))

@@ -11,5 +11,5 @@ struct parsed_url {
     const char* path;
 };
 
-
+void free_purl(struct parsed_url purl);
 struct parsed_url parse_url(const char* url);

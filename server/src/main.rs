@@ -47,10 +47,12 @@ fn index() -> &'static str {
 #[get("/connect")]
 async fn connect(ws: ws::WebSocket) -> ws::Channel<'static> {
     ws.channel(move |mut stream| Box::pin(async move {
-        let message = format!("{} hello world {}\0", rand::random::<u64>(), rand::random::<u64>());
-        info!("message: {}, message length: {}", message, message.len());
+        for _ in 0..1000 {
+            let message = format!("{} hello world {}\0", rand::random::<u64>(), rand::random::<u64>());
+            info!("message: {}, message length: {}", message, message.len());
 
-        let _ = stream.send(Message::Text(message)).await;
+            let _ = stream.send(Message::Text(message)).await;
+        }
         let _ = stream.send(Message::Close(None));
 
         Ok(())

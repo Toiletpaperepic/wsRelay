@@ -2,10 +2,6 @@
 #include <sys/random.h>
 #include <arpa/inet.h>
 #include <assert.h>
-#include <stddef.h>
-#include <stdlib.h>
-#include <string.h>
-#include <stdio.h>
 #include "websocket.h"
 #include "check.h"
 
@@ -86,6 +82,13 @@ struct connection websocket_connect(struct parsed_url purl) {
     printf("Sending message: %s\n", message);
     websocket_send(con, message, sizeof(message));
 
+    char buffer[1024] = {};
+    recv(con.fd, buffer, sizeof(buffer), 0);
+    printf("received accept message: %s\n", buffer);
+    memset(buffer, '\0', sizeof(buffer));
+
+    //TODO: check for a valid response?
+
     return con;
 }
 
@@ -93,6 +96,32 @@ void websocket_send(struct connection con, void* buffer, size_t size) {
     check(send(con.fd, buffer, size, 0) < 0);
 }
 
-void websocket_recv(struct connection con, void* buffer, size_t size) {
-    check(recv(con.fd, buffer, size, 0) < 0);
+struct message websocket_recv(struct connection con) {
+    char header[2] = {};
+    recv(con.fd, header, sizeof(header), 0);
+
+    int FIN = (header[0] & 0b10000000) != 0;
+    printf("FIN: %i\n", FIN);
+    assert(FIN == 1);
+
+    int opcode = header[0] & 0b00001111;
+    printf("opcode: %i\n", opcode);
+    assert(opcode == 1 || opcode == 2);
+
+    int masked = (header[1] & 0b10000000) != 0;
+    printf("masked: %i\n", masked);
+    assert(masked == 0);
+
+    unsigned int payload_size = header[1] & 0b01111111;
+    printf("payload size: %i\n", payload_size);
+
+    memset(header, '\0', sizeof(header));
+
+    struct message msg;
+    msg.size = payload_size;
+    msg.buffer = malloc(payload_size);
+    
+    recv(con.fd, msg.buffer, payload_size, 0);
+
+    return msg;
 }

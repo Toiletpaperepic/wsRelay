@@ -6,6 +6,11 @@ struct connection {
     int fd;
 };
 
+struct message {
+    unsigned int size;
+    void* buffer;
+};
+
 void websocket_send(struct connection con, void* buffer, size_t size);
-void websocket_recv(struct connection con, void* buffer, size_t size);
+struct message websocket_recv(struct connection con);
 struct connection websocket_connect(struct parsed_url purl);

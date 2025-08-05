@@ -1,0 +1,1 @@
+void make_http_header(struct parsed_url purl, char* message);

@@ -1,61 +1,10 @@
-#include <base64-cstring.h>
-#include <sys/random.h>
 #include <arpa/inet.h>
 #include <assert.h>
 #include "websocket.h"
+#include "https_headers.h"
 #include "check.h"
 
 // https://en.wikipedia.org/wiki/WebSocket#Protocol
-
-void make_http_header(struct connection con, char* message) {
-    strcat(message, "GET ");
-    strcat(message, con.url.path);
-    strcat(message, " HTTP/1.1\n");
-
-    // Host:
-    strcat(message, "Host: ");
-    strcat(message, con.url.address);
-    strcat(message, "\n");
-
-    // User Agent:
-    strcat(message, "User-Agent: wsp-websocket/1.0\n");
-
-    // Accept:
-    strcat(message, "Accept: */*\n");
-
-    // Upgrade: 
-    strcat(message, "Upgrade: websocket\n");
-
-    // Connection:
-    strcat(message, "Connection: Upgrade\n");
-
-    // WebSocket Version: 
-    strcat(message, "Sec-WebSocket-Version: 13\n");
-
-    char nonce[16 + 1];
-    getrandom(&nonce, sizeof(nonce), 0);
-
-    for (int i = 0; i < sizeof(nonce); i++) {
-        while (nonce[i] == '\0') {
-            getrandom(&nonce[i], sizeof(char), 0);
-        }
-    }
-
-    nonce[sizeof(nonce) - 1] = '\0';
-    const char* key = base64_encode_c((const char*)&nonce);
-
-    assert(strlen(key) == 24);
-    
-    // WebSocket Key: 
-    strcat(message, "Sec-WebSocket-Key: ");
-    strcat(message, key);
-    strcat(message, "\n");
-    
-    free((void*)key);
-
-    // Blank Line (end of request)
-    strcat(message, "\n");
-}
 
 struct connection websocket_connect(struct parsed_url purl) {
     struct connection con;
@@ -77,7 +26,7 @@ struct connection websocket_connect(struct parsed_url purl) {
 
     // tell the server to upgrade the connection 
     char message[1024] = ""; 
-    make_http_header(con, message);
+    make_http_header(con.url, message);
 
     printf("Sending message: %s\n", message);
     websocket_send(con, message, sizeof(message));
@@ -120,7 +69,7 @@ struct message websocket_recv(struct connection con) {
     struct message msg;
     msg.size = payload_size;
     msg.buffer = malloc(payload_size);
-    
+
     recv(con.fd, msg.buffer, payload_size, 0);
 
     return msg;

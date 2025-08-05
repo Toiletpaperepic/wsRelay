@@ -1,4 +1,5 @@
 #include "parse_url.h"
+#include "opcodes.h"
 #include <stddef.h>
 
 struct connection {
@@ -8,6 +9,7 @@ struct connection {
 
 struct message {
     unsigned int size;
+    enum opcodes opcodes;
     void* buffer;
 };
 

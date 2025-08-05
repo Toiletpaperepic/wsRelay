@@ -53,9 +53,9 @@ struct message websocket_recv(struct connection con) {
     printf("FIN: %i\n", FIN);
     assert(FIN == 1);
 
-    int opcode = header[0] & 0b00001111;
+    enum opcodes opcode = header[0] & 0b00001111;
     printf("opcode: %i\n", opcode);
-    assert(opcode == 1 || opcode == 2);
+    assert(opcode == TEXT || opcode == BINARY);
 
     int masked = (header[1] & 0b10000000) != 0;
     printf("masked: %i\n", masked);

@@ -5,6 +5,12 @@
 #include <string.h>
 #include "websocket.h"
 
+#if defined(__ANDROID__) && __ANDROID_API__ < 28
+#include <sys/syscall.h>
+#include <unistd.h>
+#define getrandom(buf,buflen,flags) syscall(SYS_getrandom,buf,buflen,flags)
+#endif
+
 void make_http_header(struct parsed_url purl, char* message) {
     strcat(message, "GET ");
     strcat(message, purl.path);

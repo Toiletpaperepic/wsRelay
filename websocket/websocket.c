@@ -75,8 +75,8 @@ void websocket_send(struct connection con, void* buffer, size_t size) {
         // payload[0] = payload[0] | 0b00000000;
     }
 
-    enum opcodes opcode = TEXT;
-    // enum opcodes opcode = BINARY;
+    // enum opcodes opcode = TEXT;
+    enum opcodes opcode = BINARY;
 
     switch (opcode) {
         case CONTINUATION:
@@ -124,7 +124,10 @@ void websocket_send(struct connection con, void* buffer, size_t size) {
 
 struct message websocket_recv(struct connection con) {
     uint8_t header[2] = {};
-    recv(con.fd, header, sizeof(header), 0);
+    if (recv(con.fd, header, sizeof(header), 0) < 0) {
+        fprintf(stderr, "recv(): %s.\n", strerror(errno));
+        exit(errno);
+    }
 
     int FIN = (header[0] & 0b10000000) != 0;
     printf("FIN: %i\n", FIN);

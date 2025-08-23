@@ -1,10 +1,10 @@
+#include <sys/random.h>
 #include <arpa/inet.h>
+#include <string.h>
+#include <stdlib.h>
 #include <assert.h>
 #include <errno.h>
 #include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/random.h>
 #include "websocket.h"
 #include "https_headers.h"
 

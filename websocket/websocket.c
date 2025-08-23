@@ -1,11 +1,12 @@
 #include <arpa/inet.h>
 #include <assert.h>
+#include <errno.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/random.h>
 #include "websocket.h"
 #include "https_headers.h"
-#include "check.h"
 
 // https://en.wikipedia.org/wiki/WebSocket#Protocol
 
@@ -15,34 +16,47 @@
 #define getrandom(buf,buflen,flags) syscall(SYS_getrandom,buf,buflen,flags)
 #endif
 
-
 struct connection websocket_connect(struct parsed_url purl) {
     struct connection con;
     con.url = purl;
     
     int fd = socket(AF_INET, SOCK_STREAM, 0);
-    check2(fd < 0);
+    if (fd < 0) {
+        fprintf(stderr, "socket(): %s.\n", strerror(errno));
+        exit(errno);
+    }
     con.fd = fd;
     
     struct in_addr addr;
-    check2(inet_aton(con.url.address, &addr) < 0);
+    if (inet_aton(con.url.address, &addr) < 0) {
+        fprintf(stderr, "inet_aton(): failed, Invalid address.\n");
+    }
     
     struct sockaddr_in serverAddress;
     serverAddress.sin_family = AF_INET;
     serverAddress.sin_port = htons(con.url.port);
     serverAddress.sin_addr.s_addr = addr.s_addr;
     
-    check2(connect(fd, (struct sockaddr*)&serverAddress, sizeof(serverAddress)) < 0);
+    if (connect(fd, (struct sockaddr*)&serverAddress, sizeof(serverAddress)) < 0) {
+        fprintf(stderr, "connect(): %s.\n", strerror(errno));
+        exit(errno);
+    }
 
     // tell the server to upgrade the connection 
-    char message[8192] = ""; 
+    char message[1024] = ""; 
     make_http_header(con.url, message);
-
     printf("Sending message: %s\n", message);
-    check(send(con.fd, message, strlen(message), 0) < 0);
 
-    char buffer[8192] = {};
-    recv(con.fd, buffer, sizeof(buffer), 0);
+    if (send(con.fd, message, strlen(message), 0) < 0) {
+        fprintf(stderr, "send(): %s.\n", strerror(errno));
+        exit(errno);
+    }
+
+    char buffer[1024] = {};
+    if (recv(con.fd, buffer, sizeof(buffer), 0) < 0) {
+        fprintf(stderr, "recv(): %s.\n", strerror(errno));
+        exit(errno);
+    }
     printf("received accept message: %s\n", buffer);
     memset(buffer, '\0', sizeof(buffer));
 
@@ -102,7 +116,10 @@ void websocket_send(struct connection con, void* buffer, size_t size) {
         payload[6 + i] = payload[6 + i] ^ maskingkey[i % 4];
     }
 
-    check(send(con.fd, payload, sizeof(payload), 0) < 0);
+    if (send(con.fd, payload, sizeof(payload), 0) < 0) {
+        fprintf(stderr, "send(): %s.\n", strerror(errno));
+        exit(errno);
+    }
 }
 
 struct message websocket_recv(struct connection con) {
@@ -132,7 +149,10 @@ struct message websocket_recv(struct connection con) {
     msg.size = payload_size;
     msg.buffer = malloc(payload_size);
 
-    recv(con.fd, msg.buffer, payload_size, 0);
+    if (recv(con.fd, msg.buffer, payload_size, 0) < 0) {
+        fprintf(stderr, "recv(): %s.\n", strerror(errno));
+        exit(errno);
+    }
 
     return msg;
 }

@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 4.0)
-project(wsp)
+project(wsp VERSION 0.0.0 LANGUAGES C CXX)
 
 add_compile_definitions($<IF:$<CONFIG:Release>,__release__,__debug__>)
 include_directories(include)

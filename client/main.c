@@ -1,4 +1,6 @@
 #include "main.h"
+#include <stdio.h>
+#include <unistd.h>
 
 int main() {
     // printf("Starting local connection...\n");
@@ -20,12 +22,14 @@ int main() {
 
     struct connection connection = websocket_connect(parse_url("ws://127.0.0.1:8000/connect"));
 
-    for (int i = 0; i < 1000; i++) {
-        struct message msg = websocket_recv(connection);
-
-        printf("message from server %s\n", (char*)msg.buffer);
-
-        free(msg.buffer);
+    // struct message msg = websocket_recv(connection);
+    // printf("message from server %s\n", (char*)msg.buffer);
+    // free(msg.buffer);
+    
+    char message[14] = "Hello, World!\n";
+    while(1) {
+        websocket_send(connection, &message, sizeof(message));
+        sleep(5);
     }
 
     close(connection.fd);

@@ -109,12 +109,21 @@ void websocket_send(struct connection con, void* buffer, size_t size) {
 
     uint8_t maskingkey[4] = {};
     getrandom(&maskingkey, sizeof(maskingkey), 0);
+
+    printf("masking key: ");
+    for (int i = 0; i < sizeof(maskingkey); i++)
+        printf("%X ", maskingkey[i]);
+    printf("\n");
+
     memcpy(&payload[2], &maskingkey, sizeof(maskingkey));
     memcpy(&payload[6], buffer, size);
-    
+
+    printf("payload (masked): ");
     for (int i = 0; i < size; i++) {
         payload[6 + i] = payload[6 + i] ^ maskingkey[i % 4];
+        printf("%X ", payload[6 + i]);
     }
+    printf("\n");
 
     if (send(con.fd, payload, sizeof(payload), 0) < 0) {
         fprintf(stderr, "send(): %s.\n", strerror(errno));

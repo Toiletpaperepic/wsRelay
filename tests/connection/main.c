@@ -47,7 +47,6 @@ int main() {
             if (pid3 == 0) {
                 // now listen for wsp-server.
                 // we will act like this is a normal dedicated game server
-                // taken from client/socket.cpp
                 printf("now listening for wsp-server\n");
                 
                 int startpointSocket = socket(AF_INET, SOCK_STREAM, 0);
@@ -62,15 +61,10 @@ int main() {
                 // now we wait
                 check(listen(startpointSocket, 1), "");
                 int clientSocket = accept(startpointSocket, NULL, NULL);
-                
-                char buffer[1024] = {0};
-                recv(clientSocket, buffer, sizeof(buffer), 0);
-                printf("wsp-connection-test: Message from client: %s\n", buffer);
-                
-                if (strcmp(testmesssage, buffer)) {
-                    printf("Passed!\n");
-                }
-                
+
+                send(clientSocket, testmesssage, strlen(testmesssage), 0);
+                printf("Sent!\n");
+
                 close(startpointSocket);
                 return 0;
             } else {
@@ -80,8 +74,7 @@ int main() {
                 printf("now listening for wsp-client\n");
                 
                 struct in_addr addr;
-                
-                inet_aton("127.0.0.1", &addr);
+                check(inet_aton("127.0.0.1", &addr) == 0, "");
                 
                 struct sockaddr_in serverAddress;
                 serverAddress.sin_family = AF_INET;
@@ -91,9 +84,14 @@ int main() {
                 int endpointSocket = socket(AF_INET, SOCK_STREAM, 0);
 
                 check(connect(endpointSocket, (struct sockaddr*)&serverAddress, sizeof(serverAddress)), "");
-                
-                send(endpointSocket, testmesssage, strlen(testmesssage), 0);
-                printf("Sent!\n");
+
+                char buffer[1024] = {0};
+                recv(endpointSocket, buffer, sizeof(buffer), 0);
+                printf("wsp-connection-test: Message from client: %s\n", buffer);
+
+                if (strcmp(testmesssage, buffer) == 0) {
+                    printf("Passed!\n");
+                }
 
                 close(endpointSocket);
             }

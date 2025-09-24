@@ -1,45 +1,67 @@
 #[macro_use] extern crate rocket;
-use rocket::{tokio::net::TcpStream, tokio::io::{AsyncReadExt, AsyncWriteExt}, futures::{StreamExt, SinkExt}};
-use ws::{Message, WebSocket};
+use std::{thread::sleep, time::Duration};
+use rocket::futures::{SinkExt, StreamExt};
+use ws::Message;
 
 #[get("/")]
 fn index() -> &'static str {
     "Hello, world!"
 }
 
+// #[get("/connect")]
+// async fn connect(ws: WebSocket) -> ws::Channel<'static> {
+//     ws.channel(move |mut websocket_stream| Box::pin(async move {
+//         let mut serverhost = TcpStream::connect("localhost:25565").await?;
+//         let mut buffer = vec![0; 1024];
+
+//         loop {
+//             info!("loop");
+//             rocket::tokio::select! {
+//                 message = websocket_stream.next() => {
+//                     if let Some(message) = message {
+//                         let message = message?;
+//                         info!("GOT MESSAGE!");
+//                         if message.is_binary() {
+//                             serverhost.write_all(&Message::binary(message).into_data()).await?;
+//                         } else if message.is_close() {
+//                             websocket_stream.close(None).await?;
+//                             return Ok(());
+//                         }
+//                     } else {
+//                         error!("No packet received from websocket");
+//                     }
+//                 },
+//                 data_bytes = serverhost.read(&mut buffer) => {
+//                     let data_bytes = data_bytes?;
+//                     if data_bytes > 0 {
+//                         websocket_stream.send(Message::binary(&buffer[0..data_bytes])).await?;
+//                     } else {
+//                         info!("TCP/Unix stream closed");
+//                         websocket_stream.close(None).await?;
+//                     }
+//                 }
+//             }
+//         }
+//     }))
+// }
+
 #[get("/connect")]
-async fn connect(ws: WebSocket) -> ws::Channel<'static> {
-    ws.channel(move |mut websocket_stream| Box::pin(async move {
-        let mut serverhost = TcpStream::connect("localhost:25565").await?;
-        let mut buffer = vec![0; 1024];
+async fn connect(ws: ws::WebSocket) -> ws::Channel<'static> {
+    ws.channel(move |mut stream| Box::pin(async move {
+        // let message = format!("{} hello world {}\0", rand::random::<u64>(), rand::random::<u64>());
+        // info!("message: {}, message length: {}", message, message.len());
 
-        websocket_stream.send("hello, world!".into()).await?;
+        // let _ = stream.send(Message::Text(message)).await;
 
-        loop {
-            let serverhost_bytes = serverhost.read(&mut buffer);
-            let serverhost_bytes = serverhost_bytes.await?;
+        // let _ = sleep(Duration::from_secs(1));
 
-            if serverhost_bytes > 0 {
-                websocket_stream.send(Message::binary(&buffer[0..serverhost_bytes])).await?;
-            } else {
-                websocket_stream.close(None).await?
-            }
-
-            if let Some(websocket_message) = websocket_stream.next().await {
-                let websocket_message = websocket_message?;
-
-                if websocket_message.is_binary() {
-                    serverhost.write(&websocket_message.into_data()).await?;
-                } else if websocket_message.is_close() {
-                    websocket_stream.close(None).await?;
-                    // drop(serverhost);
-                }
-            } else {
-                error!("No packet received from websocket");
-            }
+        while let Some(message) = stream.next().await {
+            info!("{}", message?);
         }
-        
-        // Ok(())
+
+        let _ = stream.send(Message::Close(None));
+
+        Ok(())
     }))
 }
 

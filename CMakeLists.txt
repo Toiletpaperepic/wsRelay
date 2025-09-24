@@ -1,7 +1,8 @@
-cmake_minimum_required(VERSION 4.0)
+cmake_minimum_required(VERSION 3.31.6)
+project(wsp VERSION 0.0.0 LANGUAGES C CXX)
 
-project(wsp)
-
+add_subdirectory(utils)
+add_subdirectory(websocket)
 add_subdirectory(client)
 add_subdirectory(server)
 

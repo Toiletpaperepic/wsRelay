@@ -137,7 +137,7 @@ void websocket_send(struct connection con, void* buffer, uint64_t size) {
         uint16_t size_big_endian = htobe16(size);
         memcpy(payload + 2, &size_big_endian, extraPayloadlength);
     } else if (extraPayloadlength == sizeof(uint64_t)) {
-        uint16_t size_big_endian = htobe64(size);
+        uint64_t size_big_endian = htobe64(size);
         memcpy(payload + 2, &size_big_endian, extraPayloadlength);
     }
 

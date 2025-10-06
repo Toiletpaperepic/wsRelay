@@ -112,11 +112,11 @@ void websocket_send(struct connection con, void* buffer, uint64_t size) {
         printf("size is smaller then 125\n");
     } else if (size >= 125 && size < UINT16_MAX) { // 16 bits
         byte1 = byte1 | 126;
-        extraPayloadlength += sizeof(uint16_t);
+        extraPayloadlength = sizeof(uint16_t);
         printf("size is smaller then UINT16_MAX\n");
     } else if (size >= 125 && size > UINT16_MAX && size < UINT64_MAX) { // 64 bits
         byte1 = byte1 | 127;
-        extraPayloadlength += sizeof(uint64_t);
+        extraPayloadlength = sizeof(uint64_t);
         printf("size is smaller then UINT64_MAX\n");
     }
 
@@ -132,8 +132,15 @@ void websocket_send(struct connection con, void* buffer, uint64_t size) {
 
     memcpy(payload, &byte0, sizeof(byte0));
     memcpy(payload + 1, &byte1, sizeof(byte1));
-    if (extraPayloadlength > 0)
-        memcpy(payload + 2, &size, extraPayloadlength);
+
+    if (extraPayloadlength == sizeof(uint16_t)) {
+        uint16_t size_big_endian = htobe16(size);
+        memcpy(payload + 2, &size_big_endian, extraPayloadlength);
+    } else if (extraPayloadlength == sizeof(uint64_t)) {
+        uint16_t size_big_endian = htobe64(size);
+        memcpy(payload + 2, &size_big_endian, extraPayloadlength);
+    }
+
     memcpy(payload + 2 + extraPayloadlength, maskingkey, sizeof(maskingkey));
     memcpy(payload + 2 + extraPayloadlength + sizeof(maskingkey), buffer, size);
 

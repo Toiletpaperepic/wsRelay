@@ -1,6 +1,6 @@
-#include <stdint.h>
 #include <sys/random.h>
 #include <arpa/inet.h>
+#include <stdint.h>
 #include <string.h>
 #include <stdlib.h>
 #include <assert.h>
@@ -77,8 +77,8 @@ void websocket_send(struct connection con, void* buffer, uint64_t size) {
         // byte0 = byte0 | 0b00000000;
     }
 
-    // enum opcodes opcode = TEXT;
-    enum opcodes opcode = BINARY;
+    enum opcodes opcode = TEXT;
+    // enum opcodes opcode = BINARY;
 
     switch (opcode) {
         case CONTINUATION:
@@ -151,7 +151,7 @@ void websocket_send(struct connection con, void* buffer, uint64_t size) {
     }
     printf("\n");
 
-    printf("payload (size):%lu\n", sizeof(payload));
+    printf("payload (size): %lu\n", sizeof(payload));
 
     if (send(con.fd, payload, sizeof(payload), 0) < 0) {
         fprintf(stderr, "send(): %s.\n", strerror(errno));
@@ -166,7 +166,7 @@ struct message websocket_recv(struct connection con) {
         exit(errno);
     }
 
-    int FIN = (header[0] & 0b10000000) != 0;
+    bool FIN = (header[0] & 0b10000000) != 0;
     printf("FIN: %i\n", FIN);
     assert(FIN == 1);
 
@@ -176,17 +176,34 @@ struct message websocket_recv(struct connection con) {
     printf("opcode: %i\n", opcode);
     assert(opcode == TEXT || opcode == BINARY);
 
-    int masked = (header[1] & 0b10000000) != 0;
+    bool masked = (header[1] & 0b10000000) != 0;
     printf("masked: %i\n", masked);
     assert(masked == 0);
 
-    unsigned int payload_size = header[1] & 0b01111111;
-    printf("payload size: %i\n", payload_size);
+    uint64_t payload_size = header[1] & 0b01111111;
+    unsigned int extraPayloadlength = 0;
 
-    memset(header, '\0', sizeof(header));
+    if (payload_size == 126) {
+        if (recv(con.fd, &payload_size, sizeof(uint16_t), 0) < 0) {
+            fprintf(stderr, "recv(): %s.\n", strerror(errno));
+            exit(errno);
+        }
+        payload_size = be16toh(payload_size);
+    }
+    else if (payload_size == 127) {
+        if (recv(con.fd, &payload_size, sizeof(uint64_t), 0) < 0) {
+            fprintf(stderr, "recv(): %s.\n", strerror(errno));
+            exit(errno);
+        }
+        payload_size = be64toh(payload_size);
+    }
+
+
+    printf("payload size: %lu\n", payload_size);
 
     struct message msg;
     msg.size = payload_size;
+    msg.opcodes = opcode;
     msg.buffer = malloc(payload_size);
 
     if (recv(con.fd, msg.buffer, payload_size, 0) < 0) {

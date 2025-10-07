@@ -17,6 +17,5 @@ if(BUILD_SERVER)
     )
 
     set(SERVER_FILE ${CMAKE_CURRENT_BINARY_DIR}/wsr-server)
-    message(STATUS ${SERVER_FILE})
     install(PROGRAMS ${SERVER_FILE} DESTINATION bin)
 endif()

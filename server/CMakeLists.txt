@@ -10,13 +10,13 @@ if(BUILD_SERVER)
         SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/
         CONFIGURE_COMMAND ""
         BUILD_COMMAND ${PROGRAM_CARGO} build --manifest-path <SOURCE_DIR>/Cargo.toml --target-dir <BINARY_DIR> $<IF:$<CONFIG:Release>,--release,--bins>
-        COMMAND ${CMAKE_COMMAND} -E copy <BINARY_DIR>/$<IF:$<CONFIG:Release>,release,debug>/wsp-server ${CMAKE_CURRENT_BINARY_DIR}/wsp-server
+        COMMAND ${CMAKE_COMMAND} -E copy <BINARY_DIR>/$<IF:$<CONFIG:Release>,release,debug>/wsr-server ${CMAKE_CURRENT_BINARY_DIR}/wsr-server
         INSTALL_COMMAND ""
         BUILD_ALWAYS ON
         USES_TERMINAL_BUILD ON
     )
 
-    set(SERVER_FILE ${CMAKE_CURRENT_BINARY_DIR}/wsp-server)
+    set(SERVER_FILE ${CMAKE_CURRENT_BINARY_DIR}/wsr-server)
     message(STATUS ${SERVER_FILE})
     install(PROGRAMS ${SERVER_FILE} DESTINATION bin)
 endif()

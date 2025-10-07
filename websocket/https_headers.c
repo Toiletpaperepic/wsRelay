@@ -22,7 +22,7 @@ void make_http_header(struct parsed_url purl, char* message) {
     strcat(message, "\n");
 
     // User Agent:
-    strcat(message, "User-Agent: wsp-websocket/1.0\n");
+    strcat(message, "User-Agent: wsr-websocket/1.0\n");
 
     // Accept:
     strcat(message, "Accept: */*\n");

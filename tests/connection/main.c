@@ -45,9 +45,9 @@ int main() {
             check(pid3 < 0, "pid3 = fork() failed.")
             
             if (pid3 == 0) {
-                // now listen for wsp-server.
+                // now listen for wsr-server.
                 // we will act like this is a normal dedicated game server
-                printf("now listening for wsp-server\n");
+                printf("now listening for wsr-server\n");
                 
                 int startpointSocket = socket(AF_INET, SOCK_STREAM, 0);
             
@@ -70,8 +70,8 @@ int main() {
             } else {
                 sleep(10);
                 // now add a endpoint socket
-                // acts like a game client connecting to wsp-client
-                printf("now listening for wsp-client\n");
+                // acts like a game client connecting to wsr-client
+                printf("now listening for wsr-client\n");
                 
                 struct in_addr addr;
                 check(inet_aton("127.0.0.1", &addr) == 0, "");
@@ -87,7 +87,7 @@ int main() {
 
                 char buffer[1024] = {0};
                 recv(endpointSocket, buffer, sizeof(buffer), 0);
-                printf("wsp-connection-test: Message from client: %s\n", buffer);
+                printf("wsr-connection-test: Message from client: %s\n", buffer);
 
                 if (strcmp(testmesssage, buffer) == 0) {
                     printf("Passed!\n");

@@ -1,1 +1,0 @@
-const char* base64_encode_c(const char* src);

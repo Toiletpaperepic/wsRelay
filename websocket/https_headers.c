@@ -1,4 +1,4 @@
-#include <base64-cstring.h>
+#include <base64.h>
 #include <sys/random.h>
 #include <assert.h>
 #include <stdlib.h>
@@ -46,7 +46,7 @@ void make_http_header(struct parsed_url purl, char* message) {
     }
 
     nonce[sizeof(nonce) - 1] = '\0';
-    const char* key = base64_encode_c((const char*)&nonce);
+    const char* key = base64_encode_no_lf(&nonce, sizeof(nonce) - 1, NULL);
 
     assert(strlen(key) == 24);
     

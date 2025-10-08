@@ -77,8 +77,8 @@ void websocket_send(struct connection con, void* buffer, uint64_t size) {
         // byte0 = byte0 | 0b00000000;
     }
 
-    enum opcodes opcode = TEXT;
-    // enum opcodes opcode = BINARY;
+    // enum opcodes opcode = TEXT;
+    enum opcodes opcode = BINARY;
 
     switch (opcode) {
         case CONTINUATION:
@@ -160,56 +160,71 @@ void websocket_send(struct connection con, void* buffer, uint64_t size) {
 }
 
 struct message websocket_recv(struct connection con) {
-    uint8_t header[2] = {};
-    if (recv(con.fd, header, sizeof(header), 0) < 0) {
-        fprintf(stderr, "recv(): %s.\n", strerror(errno));
-        exit(errno);
-    }
-
-    bool FIN = (header[0] & 0b10000000) != 0;
-    printf("FIN: %i\n", FIN);
-    assert(FIN == 1);
-
-    assert((header[0] & 0b01110000) == 0);
-
-    enum opcodes opcode = header[0] & 0b00001111;
-    printf("opcode: %i\n", opcode);
-    assert(opcode == TEXT || opcode == BINARY);
-
-    bool masked = (header[1] & 0b10000000) != 0;
-    printf("masked: %i\n", masked);
-    assert(masked == 0);
-
-    uint64_t payload_size = header[1] & 0b01111111;
-    unsigned int extraPayloadlength = 0;
-
-    if (payload_size == 126) {
-        if (recv(con.fd, &payload_size, sizeof(uint16_t), 0) < 0) {
-            fprintf(stderr, "recv(): %s.\n", strerror(errno));
-            exit(errno);
-        }
-        payload_size = be16toh(payload_size);
-    }
-    else if (payload_size == 127) {
-        if (recv(con.fd, &payload_size, sizeof(uint64_t), 0) < 0) {
-            fprintf(stderr, "recv(): %s.\n", strerror(errno));
-            exit(errno);
-        }
-        payload_size = be64toh(payload_size);
-    }
-
-
-    printf("payload size: %lu\n", payload_size);
+    bool FIN = false;
+    enum opcodes opcode;
+    uint64_t payload_size;
 
     struct message msg;
-    msg.size = payload_size;
-    msg.opcodes = opcode;
-    msg.buffer = malloc(payload_size);
+    msg.buffer = nullptr;
+    
+    while (FIN != true) {
+        uint8_t header[2] = {};
+        if (recv(con.fd, header, sizeof(header), 0) < 0) {
+            fprintf(stderr, "recv(): %s.\n", strerror(errno));
+            exit(errno);
+        }
 
-    if (recv(con.fd, msg.buffer, payload_size, 0) < 0) {
-        fprintf(stderr, "recv(): %s.\n", strerror(errno));
-        exit(errno);
+        FIN = (header[0] & 0b10000000) != 0;
+        printf("FIN: %i\n", FIN);
+
+        assert((header[0] & 0b01110000) == 0);
+
+        enum opcodes opcode = header[0] & 0b00001111;
+        printf("opcode: %i\n", opcode);
+        assert(opcode == TEXT || opcode == BINARY);
+
+        bool masked = (header[1] & 0b10000000) != 0;
+        printf("masked: %i\n", masked);
+        assert(masked == false);
+
+        uint64_t payload_size = header[1] & 0b01111111;
+        unsigned int extraPayloadlength = 0;
+
+        if (payload_size == 126) {
+            if (recv(con.fd, &payload_size, sizeof(uint16_t), 0) < 0) {
+                fprintf(stderr, "recv(): %s.\n", strerror(errno));
+                exit(errno);
+            }
+            payload_size = be16toh(payload_size);
+        }
+        else if (payload_size == 127) {
+            if (recv(con.fd, &payload_size, sizeof(uint64_t), 0) < 0) {
+                fprintf(stderr, "recv(): %s.\n", strerror(errno));
+                exit(errno);
+            }
+            payload_size = be64toh(payload_size);
+        }
+
+        printf("payload size: %lu\n", payload_size);
+
+        if (msg.buffer == nullptr) {
+            msg.buffer = malloc(payload_size);
+        } else {
+            if (realloc(msg.buffer, msg.size + payload_size) == NULL) {
+                fprintf(stderr, "realloc(): %s.\n", strerror(errno));
+                free(msg.buffer);
+            }
+        }
+        
+        if (recv(con.fd, msg.buffer + msg.size, payload_size, 0) < 0) {
+            fprintf(stderr, "recv(): %s.\n", strerror(errno));
+            free(msg.buffer);
+            exit(errno);
+        }
+
+        msg.size += payload_size;
+        msg.opcodes = opcode;
     }
-
+    
     return msg;
 }

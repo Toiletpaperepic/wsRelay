@@ -210,6 +210,7 @@ struct message websocket_recv(struct connection con) {
         if (msg.buffer == nullptr) {
             msg.buffer = malloc(payload_size);
         } else {
+            printf("resizing buffer... %i -> %lu", msg.size, msg.size + payload_size);
             if (realloc(msg.buffer, msg.size + payload_size) == NULL) {
                 fprintf(stderr, "realloc(): %s.\n", strerror(errno));
                 free(msg.buffer);

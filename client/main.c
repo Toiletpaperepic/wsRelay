@@ -14,12 +14,8 @@ struct bridge {
 
 static volatile int sigint = 0;
 
-void sigintHandler(int dummy) {
-    sigint = 1;
-}
-
 void* inbound(void* arg) {
-    uint8_t buffer[126] = {};
+    uint8_t buffer[1024] = {};
     while (!sigint) {
         memset(buffer, '\0', sizeof(buffer));
         
@@ -29,7 +25,6 @@ void* inbound(void* arg) {
             exit(errno);
         }
         
-        printf("Message from client: %s\n", (char *)buffer);
         websocket_send(((struct bridge*)arg)->wscon, buffer, bytesrecv);
     }
 
@@ -37,7 +32,7 @@ void* inbound(void* arg) {
 }
 
 void* outbound(void* arg) {
-    uint8_t buffer[126] = {};
+    uint8_t buffer[1024] = {};
     while (!sigint) {
         memset(buffer, '\0', sizeof(buffer));
         struct message msg = websocket_recv(((struct bridge*)arg)->wscon);
@@ -46,14 +41,14 @@ void* outbound(void* arg) {
             fprintf(stderr, "send(): %s.\n", strerror(errno));
             exit(errno);
         }
+
+        free(msg.buffer);
     }
 
     return NULL;
 }
 
 int main() {
-    signal(SIGINT, sigintHandler);
-
     printf("Starting local connection...\n");
     
     int socket = socket_bind(INADDR_ANY, 25565);

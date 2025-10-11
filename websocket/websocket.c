@@ -172,6 +172,7 @@ struct message websocket_recv(struct connection con) {
     uint64_t payload_size;
 
     struct message msg;
+    memset(&msg, 0, sizeof(struct message));
     msg.buffer = NULL;
     
     while (FIN != true) {
@@ -195,7 +196,6 @@ struct message websocket_recv(struct connection con) {
         assert(masked == false);
 
         uint64_t payload_size = header[1] & 0b01111111;
-        unsigned int extraPayloadlength = 0;
 
         if (payload_size == 126) {
             if (recv(con.fd, &payload_size, sizeof(uint16_t), 0) < 0) {
@@ -212,7 +212,7 @@ struct message websocket_recv(struct connection con) {
             payload_size = be64toh(payload_size);
         }
 
-        printf("payload size: %lu\n", payload_size);
+        printf("payload size: %lu, current buffer size: %lu\n", payload_size, msg.size);
 
         if (msg.buffer == NULL) {
             msg.buffer = malloc(payload_size);

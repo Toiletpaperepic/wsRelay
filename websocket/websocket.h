@@ -10,10 +10,10 @@ struct connection {
 
 struct message {
     uint64_t size;
-    enum opcodes opcodes;
+    enum opcodes opcode;
     void* buffer;
 };
 
-void websocket_send(struct connection con, void* buffer, size_t size);
+void websocket_send(struct connection con, void* buffer, uint64_t size, enum opcodes opcode, bool FIN);
 struct message websocket_recv(struct connection con);
 struct connection websocket_connect(struct parsed_url purl);

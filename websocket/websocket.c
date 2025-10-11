@@ -66,19 +66,15 @@ struct connection websocket_connect(struct parsed_url purl) {
     return con;
 }
 
-void websocket_send(struct connection con, void* buffer, uint64_t size) {
+void websocket_send(struct connection con, void* buffer, uint64_t size, enum opcodes opcode, bool FIN) {
     uint8_t byte0 = 0;
     uint8_t byte1 = 0;
-    bool FIN = true;
 
     if(FIN == true) {
         byte0 = byte0 | 0b10000000;
     } else {
         // byte0 = byte0 | 0b00000000;
     }
-
-    // enum opcodes opcode = TEXT;
-    enum opcodes opcode = BINARY;
 
     switch (opcode) {
         case CONTINUATION:
@@ -159,6 +155,17 @@ void websocket_send(struct connection con, void* buffer, uint64_t size) {
     }
 }
 
+#define resizebuffer(old_buffer, newsize)                                                         \
+    void* new_buffer = realloc(old_buffer, newsize);                                              \
+    if (new_buffer == NULL) {                                                                 \
+        fprintf(stderr, "realloc(): Unknown reason.");                                        \
+        free(old_buffer);                                                                     \
+        exit(EXIT_FAILURE);                                                                   \
+    } else if (old_buffer != new_buffer) {                                                    \
+        old_buffer = new_buffer;                                                              \
+    }                                                                                         \
+    new_buffer = NULL;                                                                        \
+
 struct message websocket_recv(struct connection con) {
     bool FIN = false;
     enum opcodes opcode;
@@ -177,7 +184,7 @@ struct message websocket_recv(struct connection con) {
         FIN = (header[0] & 0b10000000) != 0;
         printf("FIN: %i\n", FIN);
 
-        assert((header[0] & 0b01110000) == 0);
+        assert((header[0] & 0b01110000) == 0); // we should really disconect instead of crashing the program.
 
         enum opcodes opcode = header[0] & 0b00001111;
         printf("opcode: %i\n", opcode);
@@ -210,16 +217,8 @@ struct message websocket_recv(struct connection con) {
         if (msg.buffer == NULL) {
             msg.buffer = malloc(payload_size);
         } else {
-            uint64_t newsize = msg.size + payload_size;
-            printf("resizing buffer... %lu -> %lu\n", msg.size, newsize);
-            void* new_buffer = realloc(msg.buffer, newsize);
-
-            if (new_buffer == NULL) {
-                fprintf(stderr, "realloc(): Unknown reason.");
-                free(msg.buffer);
-            } else {
-                msg.buffer = new_buffer;
-            }
+            printf("resizing buffer... %lu -> %lu\n", msg.size, msg.size + payload_size);
+            resizebuffer(msg.buffer, msg.size + payload_size);
         }
         
         if (recv(con.fd, msg.buffer + msg.size, payload_size, 0) < 0) {
@@ -227,10 +226,19 @@ struct message websocket_recv(struct connection con) {
             free(msg.buffer);
             exit(errno);
         }
-
+        
         msg.size += payload_size;
-        msg.opcodes = opcode;
+        msg.opcode = opcode;
     }
-    
+
+    // add the end string char.
+    if (msg.opcode == TEXT) {
+        resizebuffer(msg.buffer, msg.size + 1);
+        printf("resizing buffer... %lu -> %lu\n", msg.size, msg.size + 1);
+
+        char endchar = '\0';
+        memcpy(msg.buffer + msg.size, &endchar, 1);
+    }
+
     return msg;
 }

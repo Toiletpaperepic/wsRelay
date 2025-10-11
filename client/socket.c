@@ -1,8 +1,8 @@
-#include "socket.h"
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
 #include <stdio.h>
+#include "socket.h"
 
 int socket_bind(in_addr_t s_addr, uint16_t port) {
     int fd = socket(AF_INET, SOCK_STREAM, 0);

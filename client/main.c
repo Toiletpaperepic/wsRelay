@@ -1,11 +1,10 @@
-#include "main.h"
 #include <sys/socket.h>
 #include <pthread.h>
 #include <string.h>
 #include <stdlib.h>
-#include <signal.h>
 #include <errno.h>
 #include <stdio.h>
+#include "main.h"
 
 struct bridge {
     int con;

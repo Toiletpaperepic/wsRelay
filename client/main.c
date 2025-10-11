@@ -83,7 +83,9 @@ int main() {
         fprintf(stderr, "close(): %s.\n", strerror(errno));
         exit(errno);
     }
-    free_purl(ws_connection.url);
+
+    free((void*)ws_connection.url.address);
+    free((void*)ws_connection.url.path);
 
     return 0;
 }

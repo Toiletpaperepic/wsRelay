@@ -83,8 +83,3 @@ struct parsed_url parse_url(const char* url) {
     
     return purl;
 }
-
-void free_purl(struct parsed_url purl) {
-    free((void*)purl.address);
-    free((void*)purl.path);
-}

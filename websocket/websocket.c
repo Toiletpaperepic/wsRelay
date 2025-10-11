@@ -165,7 +165,7 @@ struct message websocket_recv(struct connection con) {
     uint64_t payload_size;
 
     struct message msg;
-    msg.buffer = nullptr;
+    msg.buffer = NULL;
     
     while (FIN != true) {
         uint8_t header[2] = {};
@@ -207,13 +207,18 @@ struct message websocket_recv(struct connection con) {
 
         printf("payload size: %lu\n", payload_size);
 
-        if (msg.buffer == nullptr) {
+        if (msg.buffer == NULL) {
             msg.buffer = malloc(payload_size);
         } else {
-            printf("resizing buffer... %i -> %lu", msg.size, msg.size + payload_size);
-            if (realloc(msg.buffer, msg.size + payload_size) == NULL) {
-                fprintf(stderr, "realloc(): %s.\n", strerror(errno));
+            uint64_t newsize = msg.size + payload_size;
+            printf("resizing buffer... %lu -> %lu\n", msg.size, newsize);
+            void* new_buffer = realloc(msg.buffer, newsize);
+
+            if (new_buffer == NULL) {
+                fprintf(stderr, "realloc(): Unknown reason.");
                 free(msg.buffer);
+            } else {
+                msg.buffer = new_buffer;
             }
         }
         

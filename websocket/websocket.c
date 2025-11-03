@@ -24,7 +24,7 @@ struct connection websocket_connect(struct parsed_url purl) {
     int fd = socket(AF_INET, SOCK_STREAM, 0);
     if (fd < 0) {
         fprintf(stderr, "socket(): %s.\n", strerror(errno));
-        exit(errno);
+        exit(EXIT_FAILURE);
     }
     con.fd = fd;
     
@@ -40,7 +40,7 @@ struct connection websocket_connect(struct parsed_url purl) {
     
     if (connect(fd, (struct sockaddr*)&serverAddress, sizeof(serverAddress)) < 0) {
         fprintf(stderr, "connect(): %s.\n", strerror(errno));
-        exit(errno);
+        exit(EXIT_FAILURE);
     }
 
     // tell the server to upgrade the connection 
@@ -50,13 +50,13 @@ struct connection websocket_connect(struct parsed_url purl) {
 
     if (send(con.fd, message, strlen(message), 0) < 0) {
         fprintf(stderr, "send(): %s.\n", strerror(errno));
-        exit(errno);
+        exit(EXIT_FAILURE);
     }
 
     char buffer[1024] = {};
     if (recv(con.fd, buffer, sizeof(buffer), 0) < 0) {
         fprintf(stderr, "recv(): %s.\n", strerror(errno));
-        exit(errno);
+        exit(EXIT_FAILURE);
     }
     printf("received accept message: %s\n", buffer);
     memset(buffer, '\0', sizeof(buffer));
@@ -151,7 +151,7 @@ void websocket_send(struct connection con, void* buffer, uint64_t size, enum opc
 
     if (send(con.fd, payload, sizeof(payload), 0) < 0) {
         fprintf(stderr, "send(): %s.\n", strerror(errno));
-        exit(errno);
+        exit(EXIT_FAILURE);
     }
 }
 
@@ -179,7 +179,7 @@ struct message websocket_recv(struct connection con) {
         uint8_t header[2] = {};
         if (recv(con.fd, header, sizeof(header), 0) < 0) {
             fprintf(stderr, "recv(): %s.\n", strerror(errno));
-            exit(errno);
+            exit(EXIT_FAILURE);
         }
 
         FIN = (header[0] & 0b10000000) != 0;
@@ -200,14 +200,14 @@ struct message websocket_recv(struct connection con) {
         if (payload_size == 126) {
             if (recv(con.fd, &payload_size, sizeof(uint16_t), 0) < 0) {
                 fprintf(stderr, "recv(): %s.\n", strerror(errno));
-                exit(errno);
+                exit(EXIT_FAILURE);
             }
             payload_size = be16toh(payload_size);
         }
         else if (payload_size == 127) {
             if (recv(con.fd, &payload_size, sizeof(uint64_t), 0) < 0) {
                 fprintf(stderr, "recv(): %s.\n", strerror(errno));
-                exit(errno);
+                exit(EXIT_FAILURE);
             }
             payload_size = be64toh(payload_size);
         }
@@ -224,7 +224,7 @@ struct message websocket_recv(struct connection con) {
         if (recv(con.fd, msg.buffer + msg.size, payload_size, 0) < 0) {
             fprintf(stderr, "recv(): %s.\n", strerror(errno));
             free(msg.buffer);
-            exit(errno);
+            exit(EXIT_FAILURE);
         }
         
         msg.size += payload_size;

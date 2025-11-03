@@ -21,7 +21,7 @@ void* inbound(void* arg) {
         int bytesrecv = recv(((struct bridge*)arg)->con, buffer, sizeof(buffer), 0);
         if (bytesrecv < 0) {
             fprintf(stderr, "recv(): %s.\n", strerror(errno));
-            exit(errno);
+            exit(EXIT_FAILURE);
         }
         
         websocket_send(((struct bridge*)arg)->wscon, buffer, bytesrecv);
@@ -38,7 +38,7 @@ void* outbound(void* arg) {
         
         if (send(((struct bridge*)arg)->con, msg.buffer, msg.size, 0) < 0) {
             fprintf(stderr, "send(): %s.\n", strerror(errno));
-            exit(errno);
+            exit(EXIT_FAILURE);
         }
 
         free(msg.buffer);
@@ -71,16 +71,16 @@ int main() {
     
     if (close(connection) < 0) {
         fprintf(stderr, "close(): %s.\n", strerror(errno));
-        exit(errno);
+        exit(EXIT_FAILURE);
     }
     if (close(socket) < 0) {
         fprintf(stderr, "close(): %s.\n", strerror(errno));
-        exit(errno);
+        exit(EXIT_FAILURE);
     }
 
     if (close(ws_connection.fd) < 0) {
         fprintf(stderr, "close(): %s.\n", strerror(errno));
-        exit(errno);
+        exit(EXIT_FAILURE);
     }
 
     free((void*)ws_connection.url.address);

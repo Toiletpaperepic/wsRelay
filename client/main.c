@@ -52,8 +52,8 @@ void* route(void* arg) {
         struct epoll_event epe[5];
         
         printf("waiting for packets...\n");
-        int fdevents = epoll_wait(epollfd, epe, sizeof(epe), 1000);
-        printf("packets recived.\n");
+        int fdevents = epoll_wait(epollfd, epe, sizeof(epe), 1000 * 5);
+        // printf("packets recived.\n");
         if (fdevents < 0)  {
             fprintf(stderr, "epoll_wait(): %s.\n", strerror(errno));
             goto FAILURE;
@@ -75,6 +75,9 @@ void* route(void* arg) {
                         // }
                     } else if (bytesrecv == 0) {
                         printf("inbound disconnected.\n");
+
+                        websocket_send(((struct route_c*)arg)->wscon, NULL, 0, CLOSE, true);
+
                         loop = !loop;
                         break;
                     }
@@ -82,8 +85,26 @@ void* route(void* arg) {
                     websocket_send(((struct route_c*)arg)->wscon, buffer, bytesrecv, BINARY, true);
                 } else if (epe[i].data.u32 == ROUTE_WEBSOCKET) {
                     struct message msg = websocket_recv(((struct route_c*)arg)->wscon);
-                    
-                    if (send(((struct route_c*)arg)->con, msg.buffer, msg.size, 0) < 0) {
+
+                    if (msg.opcode == CLOSE) {
+                        assert(msg.size < 123);
+                        
+                        printf("Websocket closed");
+
+                        uint16_t statuscode = 0;
+                        memcpy(&statuscode, msg.buffer, sizeof(uint16_t));
+                        statuscode = be16toh(statuscode);
+                        printf(", status code: %i", statuscode);
+
+                        char reason[msg.size - sizeof(statuscode) + 1];
+                        memcpy(reason, msg.buffer + sizeof(statuscode), msg.size - sizeof(statuscode));
+                        reason[sizeof(reason) - 1] = '\0';
+                        printf(", reason: %s\n", reason);
+
+                        loop = !loop;
+                        free(msg.buffer);
+                        break;
+                    } else if (send(((struct route_c*)arg)->con, msg.buffer, msg.size, 0) < 0) {
                         fprintf(stderr, "send(): %s.\n", strerror(errno));
                         free(msg.buffer);
                         goto FAILURE;
@@ -96,7 +117,7 @@ void* route(void* arg) {
     }
     
     close(epollfd);
-    return EXIT_SUCCESS;
+    return (void*)EXIT_SUCCESS;
 FAILURE:
     close(epollfd);
     return (void*)EXIT_FAILURE;

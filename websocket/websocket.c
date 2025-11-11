@@ -168,8 +168,6 @@ void websocket_send(struct connection con, void* buffer, uint64_t size, enum opc
 
 struct message websocket_recv(struct connection con) {
     bool FIN = false;
-    enum opcodes opcode;
-    uint64_t payload_size;
 
     struct message msg;
     memset(&msg, 0, sizeof(struct message));

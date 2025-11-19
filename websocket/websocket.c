@@ -140,6 +140,14 @@ void websocket_send(struct connection con, void* buffer, uint64_t size, enum opc
     memcpy(payload + 2 + extraPayloadlength, maskingkey, sizeof(maskingkey));
     memcpy(payload + 2 + extraPayloadlength + sizeof(maskingkey), buffer, size);
 
+    printf("payload: ");
+    for (int i = 0; i < size; i++) {
+        printf("%X ", payload[2 + extraPayloadlength + sizeof(maskingkey) + i]);
+    }
+    printf("\n");
+    
+    printf("payload (size): %lu\n", sizeof(payload));
+
     printf("payload (masked): ");
     for (int i = 0; i < size; i++) {
         payload[2 + extraPayloadlength + sizeof(maskingkey) + i] = payload[2 + extraPayloadlength + sizeof(maskingkey) + i] ^ maskingkey[i % 4];
@@ -147,7 +155,6 @@ void websocket_send(struct connection con, void* buffer, uint64_t size, enum opc
     }
     printf("\n");
 
-    printf("payload (size): %lu\n", sizeof(payload));
 
     if (send(con.fd, payload, sizeof(payload), 0) < 0) {
         fprintf(stderr, "send(): %s.\n", strerror(errno));
@@ -224,6 +231,14 @@ struct message websocket_recv(struct connection con) {
             free(msg.buffer);
             exit(EXIT_FAILURE);
         }
+
+        printf("payload: ");
+        for (int i = 0; i < payload_size; i++) {
+            printf("%X ", *(uint8_t *)(msg.buffer + msg.size + i));
+        }
+        printf("\n");
+        
+        printf("payload (size): %lu\n", sizeof(payload_size));
         
         msg.size += payload_size;
         msg.opcode = opcode;

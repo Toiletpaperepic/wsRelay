@@ -1,12 +1,3 @@
-#include <assert.h>
-#include <stdint.h>
-#include <sys/socket.h>
-#include <sys/epoll.h>
-#include <pthread.h>
-#include <string.h>
-#include <stdlib.h>
-#include <errno.h>
-#include <stdio.h>
 #include "main.h"
 
 struct route_c {
@@ -26,22 +17,18 @@ void* route(void* arg) {
         goto FAILURE;
     }
 
-    // add file descriptor to the queue
+    // add file descriptors to the queue
     struct epoll_event epolleventlocalsocket;
-    // epolleventlocalsocket.data.fd = ((struct route_c*)arg)->con;
     epolleventlocalsocket.data.u32 = ROUTE_LOCAL_SOCKET;
     epolleventlocalsocket.events = EPOLLIN;
-
     if (epoll_ctl(epollfd, EPOLL_CTL_ADD, ((struct route_c*)arg)->con, &epolleventlocalsocket) < 0) {
         fprintf(stderr, "epoll_ctl(): %s.\n", strerror(errno));
         goto FAILURE;
     }
 
     struct epoll_event epolleventwebsocket;
-    // epolleventwebsocket.data.ptr = &(((struct route_c*)arg)->wscon);
     epolleventwebsocket.data.u32 = ROUTE_WEBSOCKET;
     epolleventwebsocket.events = EPOLLIN;
-
     if (epoll_ctl(epollfd, EPOLL_CTL_ADD, ((struct route_c*)arg)->wscon.fd, &epolleventwebsocket) < 0) {
         fprintf(stderr, "epoll_ctl(): %s.\n", strerror(errno));
         goto FAILURE;
@@ -53,13 +40,12 @@ void* route(void* arg) {
         
         printf("waiting for packets...\n");
         int fdevents = epoll_wait(epollfd, epe, sizeof(epe), 1000 * 5);
-        // printf("packets recived.\n");
+
         if (fdevents < 0)  {
             fprintf(stderr, "epoll_wait(): %s.\n", strerror(errno));
             goto FAILURE;
         } else if (fdevents == 0) {
             // not ready
-            // printf("epoll not ready!\n");
         } else {
             for (int i = 0; i < fdevents; i++) {
                 uint8_t buffer[65535] = {};

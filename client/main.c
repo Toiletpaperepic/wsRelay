@@ -105,6 +105,8 @@ void* route(void* arg) {
                             printf(", No close frame provided.\n");
                         }
 
+                        websocket_send(((struct route_c*)arg)->wscon, NULL, 0, CLOSE, true);
+
                         loop = !loop;
                         free(msg.buffer);
                         break;

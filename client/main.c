@@ -85,7 +85,8 @@ void* route(void* arg) {
                     websocket_send(((struct route_c*)arg)->wscon, buffer, bytesrecv, BINARY, true);
                 } else if (epe[i].data.u32 == ROUTE_WEBSOCKET) {
                     struct message msg = websocket_recv(((struct route_c*)arg)->wscon);
-
+                    assert(msg.opcode != CONTINUATION); // should've already been handled.
+                    
                     if (msg.opcode == CLOSE) {
                         printf("Websocket closed");
                         
@@ -110,10 +111,18 @@ void* route(void* arg) {
                         loop = !loop;
                         free(msg.buffer);
                         break;
-                    } else if (send(((struct route_c*)arg)->con, msg.buffer, msg.size, 0) < 0) {
-                        fprintf(stderr, "send(): %s.\n", strerror(errno));
-                        free(msg.buffer);
-                        goto FAILURE;
+                    } else if (msg.opcode == TEXT) {
+                        printf("Unsupported opcode.\n");
+                    } else if (msg.opcode == PING) {
+                        websocket_send(((struct route_c*)arg)->wscon, NULL, 0, PONG, true);
+                    } else if (msg.opcode == PONG) {
+                        // ...
+                    } else if (msg.opcode == BINARY) {
+                        if (send(((struct route_c*)arg)->con, msg.buffer, msg.size, 0) < 0) {
+                            fprintf(stderr, "send(): %s.\n", strerror(errno));
+                            free(msg.buffer);
+                            goto FAILURE;
+                        }
                     }
 
                     free(msg.buffer);

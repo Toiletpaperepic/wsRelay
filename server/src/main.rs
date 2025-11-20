@@ -24,6 +24,10 @@ async fn connect(ws: ws::WebSocket) -> ws::Channel<'static> {
 
             // let _ = stream.send(Message::Binary("hello, world!".into())).await;
 
+            if message.to_string() == "exit\n" {
+                let _ = stream.send(Message::Close(None)).await;
+            }
+
             let _ = stream.send(Message::Frame(Frame::message(message.to_string()[0..message.len() / 2].into(), opcode.into(), false))).await;
             let _ = stream.send(Message::Frame(Frame::message(message.to_string()[message.len() / 2..message.len()].into(), opcode.into(), true))).await;
 

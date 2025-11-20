@@ -219,27 +219,27 @@ struct message websocket_recv(struct connection con) {
 
         printf("payload size: %lu, current buffer size: %lu\n", payload_size, msg.size);
 
-        if (msg.buffer == NULL) {
-            msg.buffer = malloc(payload_size);
-        } else {
-            printf("resizing buffer... %lu -> %lu\n", msg.size, msg.size + payload_size);
-            resizebuffer(msg.buffer, msg.size + payload_size);
-        }
-        
-        if (recv(con.fd, msg.buffer + msg.size, payload_size, 0) < 0) {
-            fprintf(stderr, "recv(): %s.\n", strerror(errno));
-            free(msg.buffer);
-            exit(EXIT_FAILURE);
+        if (payload_size > 0) {
+            if (msg.buffer == NULL) {
+                msg.buffer = malloc(payload_size);
+            } else {
+                printf("resizing buffer... %lu -> %lu\n", msg.size, msg.size + payload_size);
+                resizebuffer(msg.buffer, msg.size + payload_size);
+            }
+            
+            if (recv(con.fd, msg.buffer + msg.size, payload_size, 0) < 0) {
+                fprintf(stderr, "recv(): %s.\n", strerror(errno));
+                free(msg.buffer);
+                exit(EXIT_FAILURE);
+            }
+
+            printf("payload: ");
+            for (int i = 0; i < payload_size; i++) {
+                printf("%X ", *(uint8_t *)(msg.buffer + msg.size + i));
+            }
+            printf("\n");
         }
 
-        printf("payload: ");
-        for (int i = 0; i < payload_size; i++) {
-            printf("%X ", *(uint8_t *)(msg.buffer + msg.size + i));
-        }
-        printf("\n");
-        
-        printf("payload (size): %lu\n", sizeof(payload_size));
-        
         msg.size += payload_size;
         msg.opcode = opcode;
     }

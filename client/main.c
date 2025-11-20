@@ -87,19 +87,23 @@ void* route(void* arg) {
                     struct message msg = websocket_recv(((struct route_c*)arg)->wscon);
 
                     if (msg.opcode == CLOSE) {
-                        assert(msg.size < 123);
-                        
                         printf("Websocket closed");
-
-                        uint16_t statuscode = 0;
-                        memcpy(&statuscode, msg.buffer, sizeof(uint16_t));
-                        statuscode = be16toh(statuscode);
-                        printf(", status code: %i", statuscode);
-
-                        char reason[msg.size - sizeof(statuscode) + 1];
-                        memcpy(reason, msg.buffer + sizeof(statuscode), msg.size - sizeof(statuscode));
-                        reason[sizeof(reason) - 1] = '\0';
-                        printf(", reason: %s\n", reason);
+                        
+                        if (msg.size > 0) {
+                            uint16_t statuscode = 0;
+                            memcpy(&statuscode, msg.buffer, sizeof(uint16_t));
+                            statuscode = be16toh(statuscode);
+                            printf(", status code: %i", statuscode);
+    
+                            char reason[msg.size - sizeof(statuscode) + 1];
+                            memcpy(reason, msg.buffer + sizeof(statuscode), msg.size - sizeof(statuscode));
+                            reason[sizeof(reason) - 1] = '\0';
+                            printf(", reason: %s\n", reason);
+                        } else if (msg.size > 123) {
+                            printf(", CloseFrame size too big! Not reading...\n");
+                        } else {
+                            printf(", No close frame provided.\n");
+                        }
 
                         loop = !loop;
                         free(msg.buffer);

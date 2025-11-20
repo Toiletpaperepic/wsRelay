@@ -1,6 +1,7 @@
 #include "parse_url.h"
 #include "opcodes.h"
 #include <stddef.h>
+#include <stdint.h>
 
 struct connection {
     struct parsed_url url;
@@ -8,11 +9,11 @@ struct connection {
 };
 
 struct message {
-    unsigned int size;
-    enum opcodes opcodes;
+    uint64_t size;
+    enum opcodes opcode;
     void* buffer;
 };
 
-void websocket_send(struct connection con, void* buffer, size_t size);
+void websocket_send(struct connection con, void* buffer, uint64_t size, enum opcodes opcode, bool FIN);
 struct message websocket_recv(struct connection con);
 struct connection websocket_connect(struct parsed_url purl);

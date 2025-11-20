@@ -1,66 +1,41 @@
 #[macro_use] extern crate rocket;
-use std::{thread::sleep, time::Duration};
 use rocket::futures::{SinkExt, StreamExt};
-use ws::Message;
+use ws::{frame::Frame, Message};
 
 #[get("/")]
 fn index() -> &'static str {
     "Hello, world!"
 }
 
-// #[get("/connect")]
-// async fn connect(ws: WebSocket) -> ws::Channel<'static> {
-//     ws.channel(move |mut websocket_stream| Box::pin(async move {
-//         let mut serverhost = TcpStream::connect("localhost:25565").await?;
-//         let mut buffer = vec![0; 1024];
-
-//         loop {
-//             info!("loop");
-//             rocket::tokio::select! {
-//                 message = websocket_stream.next() => {
-//                     if let Some(message) = message {
-//                         let message = message?;
-//                         info!("GOT MESSAGE!");
-//                         if message.is_binary() {
-//                             serverhost.write_all(&Message::binary(message).into_data()).await?;
-//                         } else if message.is_close() {
-//                             websocket_stream.close(None).await?;
-//                             return Ok(());
-//                         }
-//                     } else {
-//                         error!("No packet received from websocket");
-//                     }
-//                 },
-//                 data_bytes = serverhost.read(&mut buffer) => {
-//                     let data_bytes = data_bytes?;
-//                     if data_bytes > 0 {
-//                         websocket_stream.send(Message::binary(&buffer[0..data_bytes])).await?;
-//                     } else {
-//                         info!("TCP/Unix stream closed");
-//                         websocket_stream.close(None).await?;
-//                     }
-//                 }
-//             }
-//         }
-//     }))
-// }
-
 #[get("/connect")]
 async fn connect(ws: ws::WebSocket) -> ws::Channel<'static> {
     ws.channel(move |mut stream| Box::pin(async move {
-        // let message = format!("{} hello world {}\0", rand::random::<u64>(), rand::random::<u64>());
-        // info!("message: {}, message length: {}", message, message.len());
-
-        // let _ = stream.send(Message::Text(message)).await;
-
-        // let _ = sleep(Duration::from_secs(1));
-
         while let Some(message) = stream.next().await {
-            info!("{}", message?);
+            let message = message?;
+            info!("payload: {}, payload (size): {}, binary: {}, text: {}", message, message.len(), message.is_binary(), message.is_text());
+
+            let opcode;
+
+             if message.is_text() {
+                opcode = 1;
+            } else {
+                opcode = 2;
+            }
+
+            // let _ = stream.send(Message::Binary("hello, world!".into())).await;
+
+            if message.to_string() == "exit\n" {
+                let _ = stream.send(Message::Close(None)).await;
+            }
+
+            let _ = stream.send(Message::Frame(Frame::message(message.to_string()[0..message.len() / 2].into(), opcode.into(), false))).await;
+            let _ = stream.send(Message::Frame(Frame::message(message.to_string()[message.len() / 2..message.len()].into(), opcode.into(), true))).await;
+
+            // ok(());
         }
-
-        let _ = stream.send(Message::Close(None));
-
+        
+        let _ = stream.send(Message::Close(None)).await;
+        
         Ok(())
     }))
 }

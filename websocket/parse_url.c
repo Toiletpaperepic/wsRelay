@@ -68,7 +68,11 @@ struct parsed_url parse_url(const char* url) {
             } 
         }
     } else {
-        purl.port = 8000;
+        if (purl.protocol == wss) {
+            purl.port = 443;
+        } else {
+            purl.port = 80;
+        }
     }
 
     // printf("Port: %d\n", purl.port);

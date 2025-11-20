@@ -1,16 +1,19 @@
 #include "main.h"
 
-struct route_c {
-    int con;
-    struct connection wscon;
-};
-
 #define ROUTE_LOCAL_SOCKET 0
 #define ROUTE_WEBSOCKET 1
 
-void* route(void* arg) {
+void* route(void* local_socket) {
     printf("Route thread started!\n");
 
+    // start a new websocket connection
+    printf("Starting websocket connection...\n");
+    struct connection ws_connection = websocket_connect(parse_url("ws://127.0.0.1:8000/connect"));
+    // printf("started a new connection route to %s:%i/%s\n", ws_connection.url.address, ws_connection.url.port, ws_connection.url.path);
+    free((void*)ws_connection.url.address);
+    free((void*)ws_connection.url.path);
+
+    // create a epoll file discriptor
     int epollfd = epoll_create1(0);
     if (epollfd < 0) {
         fprintf(stderr, "epoll_create1(): %s.\n", strerror(errno));
@@ -21,7 +24,7 @@ void* route(void* arg) {
     struct epoll_event epolleventlocalsocket;
     epolleventlocalsocket.data.u32 = ROUTE_LOCAL_SOCKET;
     epolleventlocalsocket.events = EPOLLIN;
-    if (epoll_ctl(epollfd, EPOLL_CTL_ADD, ((struct route_c*)arg)->con, &epolleventlocalsocket) < 0) {
+    if (epoll_ctl(epollfd, EPOLL_CTL_ADD, *(int*)local_socket, &epolleventlocalsocket) < 0) {
         fprintf(stderr, "epoll_ctl(): %s.\n", strerror(errno));
         goto FAILURE;
     }
@@ -29,7 +32,7 @@ void* route(void* arg) {
     struct epoll_event epolleventwebsocket;
     epolleventwebsocket.data.u32 = ROUTE_WEBSOCKET;
     epolleventwebsocket.events = EPOLLIN;
-    if (epoll_ctl(epollfd, EPOLL_CTL_ADD, ((struct route_c*)arg)->wscon.fd, &epolleventwebsocket) < 0) {
+    if (epoll_ctl(epollfd, EPOLL_CTL_ADD, ws_connection.fd, &epolleventwebsocket) < 0) {
         fprintf(stderr, "epoll_ctl(): %s.\n", strerror(errno));
         goto FAILURE;
     }
@@ -48,10 +51,10 @@ void* route(void* arg) {
             // not ready
         } else {
             for (int i = 0; i < fdevents; i++) {
-                uint8_t buffer[65535] = {};
-
                 if (epe[i].data.u32 == ROUTE_LOCAL_SOCKET) {
-                    int bytesrecv = recv(((struct route_c*)arg)->con, buffer, sizeof(buffer), 0);
+                    uint8_t buffer[65535] = {};
+                    int bytesrecv = recv(*(int*)local_socket, buffer, sizeof(buffer), 0);
+
                     if (bytesrecv < 0) {
                         // if (bytesrecv == ECONNRESET...) {
                         
@@ -62,15 +65,15 @@ void* route(void* arg) {
                     } else if (bytesrecv == 0) {
                         printf("inbound disconnected.\n");
 
-                        websocket_send(((struct route_c*)arg)->wscon, NULL, 0, CLOSE, true);
+                        websocket_send(ws_connection, NULL, 0, CLOSE, true);
 
                         loop = !loop;
                         break;
                     }
                     
-                    websocket_send(((struct route_c*)arg)->wscon, buffer, bytesrecv, BINARY, true);
+                    websocket_send(ws_connection, buffer, bytesrecv, BINARY, true);
                 } else if (epe[i].data.u32 == ROUTE_WEBSOCKET) {
-                    struct message msg = websocket_recv(((struct route_c*)arg)->wscon);
+                    struct message msg = websocket_recv(ws_connection);
                     assert(msg.opcode != CONTINUATION); // should've already been handled.
                     
                     if (msg.opcode == CLOSE) {
@@ -92,7 +95,7 @@ void* route(void* arg) {
                             printf(", No close frame provided.\n");
                         }
 
-                        websocket_send(((struct route_c*)arg)->wscon, NULL, 0, CLOSE, true);
+                        websocket_send(ws_connection, NULL, 0, CLOSE, true);
 
                         loop = !loop;
                         free(msg.buffer);
@@ -100,11 +103,11 @@ void* route(void* arg) {
                     } else if (msg.opcode == TEXT) {
                         printf("Unsupported opcode.\n");
                     } else if (msg.opcode == PING) {
-                        websocket_send(((struct route_c*)arg)->wscon, NULL, 0, PONG, true);
+                        websocket_send(ws_connection, NULL, 0, PONG, true);
                     } else if (msg.opcode == PONG) {
                         // ...
                     } else if (msg.opcode == BINARY) {
-                        if (send(((struct route_c*)arg)->con, msg.buffer, msg.size, 0) < 0) {
+                        if (send(*(int*)local_socket, msg.buffer, msg.size, 0) < 0) {
                             fprintf(stderr, "send(): %s.\n", strerror(errno));
                             free(msg.buffer);
                             goto FAILURE;
@@ -116,11 +119,39 @@ void* route(void* arg) {
             }
         }
     }
-    
-    close(epollfd);
+
+    if (close(*(int*)local_socket) < 0) {
+        fprintf(stderr, "close(): %s.\n", strerror(errno));
+        goto FAILURE;
+    }
+
+    if (close(ws_connection.fd) < 0) {
+        fprintf(stderr, "close(): %s.\n", strerror(errno));
+        goto FAILURE;
+    }
+
+    if (close(epollfd) < 0) {
+        fprintf(stderr, "close(): %s.\n", strerror(errno));
+        goto FAILURE;
+    }
+
     return (void*)EXIT_SUCCESS;
 FAILURE:
-    close(epollfd);
+    if (close(*(int*)local_socket) < 0) {
+        fprintf(stderr, "close(): %s.\n", strerror(errno));
+        goto FAILURE;
+    }
+
+    if (close(ws_connection.fd) < 0) {
+        fprintf(stderr, "close(): %s.\n", strerror(errno));
+        goto FAILURE;
+    }
+
+    if (close(epollfd) < 0) {
+        fprintf(stderr, "close(): %s.\n", strerror(errno));
+        goto FAILURE;
+    }
+
     return (void*)EXIT_FAILURE;
 }
 
@@ -128,38 +159,19 @@ int main() {
     printf("Starting local connection...\n");
     
     int socket = socket_bind(INADDR_ANY, 48375);
-    int connection = socket_listen(socket);
-    
-    printf("Starting websocket connection...\n");
-    struct connection ws_connection = websocket_connect(parse_url("ws://127.0.0.1:8000/connect"));
-    
-    struct route_c route_c;
-    route_c.con = connection;
-    route_c.wscon = ws_connection;
+    int new_connection = socket_listen(socket);
 
     pthread_t thread1;
-    pthread_create(&thread1, NULL, &route, (void*)&route_c);
+    pthread_create(&thread1, NULL, &route, (void*)&new_connection);
 
     void* return_val;
     pthread_join(thread1, &return_val);
     printf("Thread exited with exitcode %i\n", (int)return_val);
     
-    if (close(connection) < 0) {
-        fprintf(stderr, "close(): %s.\n", strerror(errno));
-        exit(EXIT_FAILURE);
-    }
     if (close(socket) < 0) {
         fprintf(stderr, "close(): %s.\n", strerror(errno));
         exit(EXIT_FAILURE);
     }
-
-    if (close(ws_connection.fd) < 0) {
-        fprintf(stderr, "close(): %s.\n", strerror(errno));
-        exit(EXIT_FAILURE);
-    }
-
-    free((void*)ws_connection.url.address);
-    free((void*)ws_connection.url.path);
 
     return 0;
 }

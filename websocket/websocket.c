@@ -183,7 +183,7 @@ struct message websocket_recv(struct connection con) {
     
     while (FIN != true) {
         uint8_t header[2] = {};
-        if (recv(con.fd, header, sizeof(header), 0) < 0) {
+        if (recv(con.fd, header, sizeof(header), MSG_WAITALL) < 0) {
             fprintf(stderr, "recv(): %s.\n", strerror(errno));
             exit(EXIT_FAILURE);
         }
@@ -227,7 +227,7 @@ struct message websocket_recv(struct connection con) {
                 resizebuffer(msg.buffer, msg.size + payload_size);
             }
             
-            if (recv(con.fd, msg.buffer + msg.size, payload_size, 0) < 0) {
+            if (recv(con.fd, msg.buffer + msg.size, payload_size, MSG_WAITALL) < 0) {
                 fprintf(stderr, "recv(): %s.\n", strerror(errno));
                 free(msg.buffer);
                 exit(EXIT_FAILURE);

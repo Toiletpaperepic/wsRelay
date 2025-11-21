@@ -1,5 +1,6 @@
 #include <sys/random.h>
 #include <arpa/inet.h>
+#include <endian.h>
 #include <stdint.h>
 #include <string.h>
 #include <stdlib.h>

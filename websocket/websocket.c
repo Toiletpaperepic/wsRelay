@@ -163,7 +163,7 @@ void websocket_send(struct connection con, void* buffer, uint64_t size, enum opc
     }
 }
 
-void resizebuffer(void* old_buffer, size_t newsize) {
+static void resizebuffer(void* old_buffer, size_t newsize) {
     void* new_buffer = realloc(old_buffer, newsize);
     if (new_buffer == NULL) {
         fprintf(stderr, "realloc(): %s.\n", strerror(errno));

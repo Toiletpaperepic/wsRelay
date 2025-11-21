@@ -39,10 +39,10 @@ void* route(void* local_socket) {
 
     bool loop = true;
     while (loop) {
-        struct epoll_event epe[5];
+        struct epoll_event epe[2];
         
         printf("waiting for packets...\n");
-        int fdevents = epoll_wait(epollfd, epe, sizeof(epe), 1000 * 5);
+        int fdevents = epoll_wait(epollfd, epe, sizeof(epe) / sizeof(struct epoll_event), -1);
 
         if (fdevents < 0)  {
             fprintf(stderr, "epoll_wait(): %s.\n", strerror(errno));
@@ -52,7 +52,7 @@ void* route(void* local_socket) {
         } else {
             for (int i = 0; i < fdevents; i++) {
                 if (epe[i].data.u32 == ROUTE_LOCAL_SOCKET) {
-                    uint8_t buffer[65535] = {};
+                    uint8_t buffer[1024] = {};
                     int bytesrecv = recv(*(int*)local_socket, buffer, sizeof(buffer), 0);
 
                     if (bytesrecv < 0) {
@@ -122,34 +122,34 @@ void* route(void* local_socket) {
 
     if (close(*(int*)local_socket) < 0) {
         fprintf(stderr, "close(): %s.\n", strerror(errno));
-        goto FAILURE;
+        return (void*)EXIT_FAILURE;
     }
 
     if (close(ws_connection.fd) < 0) {
         fprintf(stderr, "close(): %s.\n", strerror(errno));
-        goto FAILURE;
+        return (void*)EXIT_FAILURE;
     }
 
     if (close(epollfd) < 0) {
         fprintf(stderr, "close(): %s.\n", strerror(errno));
-        goto FAILURE;
+        return (void*)EXIT_FAILURE;
     }
 
     return (void*)EXIT_SUCCESS;
 FAILURE:
     if (close(*(int*)local_socket) < 0) {
         fprintf(stderr, "close(): %s.\n", strerror(errno));
-        goto FAILURE;
+        return (void*)EXIT_FAILURE;
     }
 
     if (close(ws_connection.fd) < 0) {
         fprintf(stderr, "close(): %s.\n", strerror(errno));
-        goto FAILURE;
+        return (void*)EXIT_FAILURE;
     }
 
     if (close(epollfd) < 0) {
         fprintf(stderr, "close(): %s.\n", strerror(errno));
-        goto FAILURE;
+        return (void*)EXIT_FAILURE;
     }
 
     return (void*)EXIT_FAILURE;
@@ -164,9 +164,9 @@ int main() {
     pthread_t thread1;
     pthread_create(&thread1, NULL, &route, (void*)&new_connection);
 
-    void* return_val;
-    pthread_join(thread1, &return_val);
-    printf("Thread exited with exitcode %i\n", (int)return_val);
+    int return_val;
+    pthread_join(thread1, (void*)&return_val);
+    printf("Thread exited with exitcode %i\n", return_val);
     
     if (close(socket) < 0) {
         fprintf(stderr, "close(): %s.\n", strerror(errno));

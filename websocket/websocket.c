@@ -163,17 +163,16 @@ void websocket_send(struct connection con, void* buffer, uint64_t size, enum opc
     }
 }
 
-static void resizebuffer(void* old_buffer, size_t newsize) {
-    void* new_buffer = realloc(old_buffer, newsize);
-    if (new_buffer == NULL) {
-        fprintf(stderr, "realloc(): %s.\n", strerror(errno));
-        free(old_buffer);
-        exit(EXIT_FAILURE);
-    } else if (old_buffer != new_buffer) {
-        old_buffer = new_buffer;
-    }
-    new_buffer = NULL;
-}
+#define resizebuffer(old_buffer, newsize)                                                     \
+    void* new_buffer = realloc(old_buffer, newsize);                                          \
+    if (new_buffer == NULL) {                                                                 \
+        fprintf(stderr, "realloc(): Unknown reason.\n");                                      \
+        free(old_buffer);                                                                     \
+        exit(EXIT_FAILURE);                                                                   \
+    } else if (old_buffer != new_buffer) {                                                    \
+        old_buffer = new_buffer;                                                              \
+    }                                                                                         \
+    new_buffer = NULL;                                                                        \
 
 struct message websocket_recv(struct connection con) {
     bool FIN = false;

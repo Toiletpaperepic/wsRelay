@@ -68,8 +68,7 @@ struct connection websocket_connect(struct parsed_url purl) {
 }
 
 void websocket_send(struct connection con, void* buffer, uint64_t size, enum opcodes opcode, bool FIN) {
-    uint8_t byte0 = 0;
-    uint8_t byte1 = 0;
+    uint8_t byte0 = 0, byte1 = 0;
 
     if(FIN == true) {
         byte0 = byte0 | 0b10000000;
@@ -139,23 +138,27 @@ void websocket_send(struct connection con, void* buffer, uint64_t size, enum opc
     }
 
     memcpy(payload + 2 + extraPayloadlength, maskingkey, sizeof(maskingkey));
-    memcpy(payload + 2 + extraPayloadlength + sizeof(maskingkey), buffer, size);
 
-    printf("payload: ");
-    for (int i = 0; i < size; i++) {
-        printf("%X ", payload[2 + extraPayloadlength + sizeof(maskingkey) + i]);
+    if (buffer == NULL && size == 0) {
+        printf("no payload provided.\n");
+    } else {
+        memcpy(payload + 2 + extraPayloadlength + sizeof(maskingkey), buffer, size);
+
+        printf("payload: ");
+        for (int i = 0; i < size; i++) {
+            printf("%X ", payload[2 + extraPayloadlength + sizeof(maskingkey) + i]);
+        }
+        printf("\n");
+        
+        printf("payload (size): %lu\n", sizeof(payload));
+
+        printf("payload (masked): ");
+        for (int i = 0; i < size; i++) {
+            payload[2 + extraPayloadlength + sizeof(maskingkey) + i] = payload[2 + extraPayloadlength + sizeof(maskingkey) + i] ^ maskingkey[i % 4];
+            printf("%X ", payload[2 + extraPayloadlength + sizeof(maskingkey) + i]);
+        }
+        printf("\n");
     }
-    printf("\n");
-    
-    printf("payload (size): %lu\n", sizeof(payload));
-
-    printf("payload (masked): ");
-    for (int i = 0; i < size; i++) {
-        payload[2 + extraPayloadlength + sizeof(maskingkey) + i] = payload[2 + extraPayloadlength + sizeof(maskingkey) + i] ^ maskingkey[i % 4];
-        printf("%X ", payload[2 + extraPayloadlength + sizeof(maskingkey) + i]);
-    }
-    printf("\n");
-
 
     if (send(con.fd, payload, sizeof(payload), 0) < 0) {
         fprintf(stderr, "send(): %s.\n", strerror(errno));

@@ -4,8 +4,8 @@ add_library(websocket SHARED
     websocket.h
     parse_url.c
     parse_url.h
-    https_headers.c
-    https_headers.h
+    http_header.c
+    http_header.h
 )
 
 target_include_directories(websocket PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})

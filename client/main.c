@@ -1,10 +1,23 @@
 #include "main.h"
+#include <stdio.h>
+#include <stdlib.h>
 
-#define ROUTE_LOCAL_SOCKET 0
+volatile sig_atomic_t status = 0;
+
+static void catch_function(int signo) {
+    printf("Recive interrupt. Now exiting, bye bye!\n");
+    status = signo;
+}
+
+#define ROUTE_CLIENT_CONNECTION 0
 #define ROUTE_WEBSOCKET 1
 
-void* route(void* local_socket) {
+void* route(void* client_connection_pointer) {
     printf("Route thread started!\n");
+    
+    // immediately copy the client pointer, otherwise you'll get data races between main and this thread.
+    int cilent_connection = 0;
+    memcpy(&cilent_connection, client_connection_pointer, sizeof(int));
 
     // start a new websocket connection
     printf("Starting websocket connection...\n");
@@ -22,9 +35,9 @@ void* route(void* local_socket) {
 
     // add file descriptors to the queue
     struct epoll_event epolleventlocalsocket;
-    epolleventlocalsocket.data.u32 = ROUTE_LOCAL_SOCKET;
+    epolleventlocalsocket.data.u32 = ROUTE_CLIENT_CONNECTION;
     epolleventlocalsocket.events = EPOLLIN;
-    if (epoll_ctl(epollfd, EPOLL_CTL_ADD, *(int*)local_socket, &epolleventlocalsocket) < 0) {
+    if (epoll_ctl(epollfd, EPOLL_CTL_ADD, cilent_connection, &epolleventlocalsocket) < 0) {
         fprintf(stderr, "epoll_ctl(): %s.\n", strerror(errno));
         goto FAILURE;
     }
@@ -51,9 +64,9 @@ void* route(void* local_socket) {
             // not ready
         } else {
             for (int i = 0; i < fdevents; i++) {
-                if (epe[i].data.u32 == ROUTE_LOCAL_SOCKET) {
+                if (epe[i].data.u32 == ROUTE_CLIENT_CONNECTION) {
                     uint8_t buffer[1024] = {};
-                    int bytesrecv = recv(*(int*)local_socket, buffer, sizeof(buffer), 0);
+                    int bytesrecv = recv(cilent_connection, buffer, sizeof(buffer), 0);
 
                     if (bytesrecv < 0) {
                         // if (bytesrecv == ECONNRESET...) {
@@ -107,7 +120,7 @@ void* route(void* local_socket) {
                     } else if (msg.opcode == PONG) {
                         // ...
                     } else if (msg.opcode == BINARY) {
-                        if (send(*(int*)local_socket, msg.buffer, msg.size, 0) < 0) {
+                        if (send(cilent_connection, msg.buffer, msg.size, 0) < 0) {
                             fprintf(stderr, "send(): %s.\n", strerror(errno));
                             free(msg.buffer);
                             goto FAILURE;
@@ -120,7 +133,9 @@ void* route(void* local_socket) {
         }
     }
 
-    if (close(*(int*)local_socket) < 0) {
+    printf("Route thread exiting...\n");
+
+    if (close(cilent_connection) < 0) {
         fprintf(stderr, "close(): %s.\n", strerror(errno));
         return (void*)EXIT_FAILURE;
     }
@@ -134,10 +149,9 @@ void* route(void* local_socket) {
         fprintf(stderr, "close(): %s.\n", strerror(errno));
         return (void*)EXIT_FAILURE;
     }
-
     return (void*)EXIT_SUCCESS;
 FAILURE:
-    if (close(*(int*)local_socket) < 0) {
+    if (close(cilent_connection) < 0) {
         fprintf(stderr, "close(): %s.\n", strerror(errno));
         return (void*)EXIT_FAILURE;
     }
@@ -157,21 +171,68 @@ FAILURE:
 
 int main() {
     printf("Starting local connection...\n");
+
+    struct sigaction a;
+    a.sa_handler = catch_function;
+    a.sa_flags = 0;
+    sigemptyset( &a.sa_mask );
+     
+    if (sigaction(SIGINT, &a, NULL) < 0) { // https://stackoverflow.com/questions/15617562/sigintctrlc-doesnt-interrupt-accept-call
+        fprintf(stderr, "An error occurred while setting up a signal handler.\n");
+        return EXIT_FAILURE;
+    }
     
+    unsigned int threads_total = 1;
+    pthread_t** threads = malloc(threads_total * sizeof(*threads));
+
     int socket = socket_bind(INADDR_ANY, 48375);
-    int new_connection = socket_listen(socket);
+    if (socket < -1) {
+        fprintf(stderr, "socket failed to bind.\n");
+        return EXIT_FAILURE;
+    }
 
-    pthread_t thread1;
-    pthread_create(&thread1, NULL, &route, (void*)&new_connection);
+    // keep constantly looking for a new connection. when we do, pass it along to a another thread to handle it.
+    while (status != SIGINT) {
+        if (socket_listen(socket) == EXIT_FAILURE) {
+            fprintf(stderr, "failed to listen to socket.\n");
+            break;
+        }
+        
+        int new_connection = socket_accept(socket);
 
-    int return_val;
-    pthread_join(thread1, (void*)&return_val);
-    printf("Thread exited with exitcode %i\n", return_val);
+        if (new_connection < 0) {
+            if (status != SIGINT) {
+                fprintf(stderr, "socket failed to bind.\n");
+            }
+            break;
+        }
+
+        threads[threads_total - 1] = malloc(sizeof(pthread_t*));
+        pthread_create(threads[threads_total - 1], NULL, &route, (void*)&new_connection);
+        
+        threads_total++;
+        pthread_t** tmp = realloc(threads, threads_total * sizeof(*threads));
+        if (tmp == NULL) {
+            fprintf(stderr, "realloc(): Unknown reason.\n");
+            free(threads);
+            return EXIT_FAILURE;
+        }
+        threads = tmp;
+    }
+
+    for (int i = 0; i < threads_total - 1; i++) {
+        int return_val;
+        pthread_join(*threads[i], (void*)&return_val);
+        free(threads[i]);
+        printf("Thread[%i] exited with exitcode %i\n", i, return_val);
+    }
+
+    free(threads);
     
     if (close(socket) < 0) {
         fprintf(stderr, "close(): %s.\n", strerror(errno));
-        exit(EXIT_FAILURE);
+        return EXIT_FAILURE;
     }
 
-    return 0;
+    return EXIT_SUCCESS;
 }

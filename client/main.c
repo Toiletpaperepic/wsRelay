@@ -21,7 +21,7 @@ void* route(void* client_connection_pointer) {
 
     // start a new websocket connection
     printf("Starting websocket connection...\n");
-    struct connection ws_connection = websocket_connect(parse_url("ws://127.0.0.1:8000/connect"));
+    struct connection ws_connection = websocket_connect(parse_url("ws://192.168.68.72:8000/connect"));
     // printf("started a new connection route to %s:%i/%s\n", ws_connection.url.address, ws_connection.url.port, ws_connection.url.path);
     free((void*)ws_connection.url.address);
     free((void*)ws_connection.url.path);
@@ -169,7 +169,8 @@ FAILURE:
     return (void*)EXIT_FAILURE;
 }
 
-int main() {
+int main(int argc, char *argv[]) {
+    parse_args(argc, argv);
     printf("Starting local connection...\n");
 
     struct sigaction a;
@@ -202,7 +203,7 @@ int main() {
 
         if (new_connection < 0) {
             if (status != SIGINT) {
-                fprintf(stderr, "socket failed to bind.\n");
+                fprintf(stderr, "failed to accept a new connection.\n");
             }
             break;
         }

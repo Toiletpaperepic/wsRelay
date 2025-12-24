@@ -15,7 +15,7 @@ int main() {
     register_argument(arg3, &arg2, "thisisaint", IS_INT);
     register_argument(arg4, &arg3, "thisisaunsignedint", IS_UNSIGNED_INT);
 
-    rcheck(parse_args(argc, argv, arg4) != true, "parsing command line failed.");
+    rcheck(parse_args(argc, argv, &arg4) != true, "parsing command line failed.");
 
     check((bool)arg0.value != true);
     printf("%s\n", (bool)arg0.value ? "True" : "False");

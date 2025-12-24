@@ -19,4 +19,4 @@ struct Argument {
     structname.value = NULL; \
     structname.next = ptrnext; 
 
-bool parse_args(int argc, char *argv[], struct Argument registerargs);
+bool parse_args(int argc, char *argv[], struct Argument* registerargs);

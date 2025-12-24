@@ -9,9 +9,9 @@ void help() {
     // todo: ...
 }
 
-bool parse_args(int argc, char *argv[], struct Argument registerargs) {
+bool parse_args(int argc, char *argv[], struct Argument* registerargs) {
     for (int i = 1; i < argc; i++) {
-        struct Argument* nextarg = &registerargs;
+        struct Argument* nextarg = registerargs;
 
         while (true) {
             char dashdashname[3 + strlen(nextarg->name)] = {};

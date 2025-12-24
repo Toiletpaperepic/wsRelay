@@ -194,7 +194,7 @@ struct message websocket_recv(struct connection con) {
         FIN = (header[0] & 0b10000000) != 0;
         printf("FIN: %i\n", FIN);
 
-        assert((header[0] & 0b01110000) == 0); // we should really disconect instead of crashing the program.
+        assert((header[0] & 0b01110000) == 0); // fixme: we should really disconect instead of crashing the program.
 
         enum opcodes opcode = header[0] & 0b00001111;
         printf("opcode: %i\n", opcode);

@@ -170,14 +170,13 @@ FAILURE:
 }
 
 int main(int argc, char *argv[]) {
-    parse_args(argc, argv);
     printf("Starting local connection...\n");
 
     struct sigaction a;
     a.sa_handler = catch_function;
     a.sa_flags = 0;
     sigemptyset( &a.sa_mask );
-     
+    
     if (sigaction(SIGINT, &a, NULL) < 0) { // https://stackoverflow.com/questions/15617562/sigintctrlc-doesnt-interrupt-accept-call
         fprintf(stderr, "An error occurred while setting up a signal handler.\n");
         return EXIT_FAILURE;
@@ -188,7 +187,7 @@ int main(int argc, char *argv[]) {
 
     int socket = socket_bind(INADDR_ANY, 48375);
     if (socket < -1) {
-        fprintf(stderr, "socket failed to bind.\n");
+            fprintf(stderr, "socket failed to bind.\n");
         return EXIT_FAILURE;
     }
 
@@ -227,12 +226,12 @@ int main(int argc, char *argv[]) {
         free(threads[i]);
         printf("Thread[%i] exited with exitcode %i\n", i, return_val);
     }
-
+    
     free(threads);
     
     if (close(socket) < 0) {
-        fprintf(stderr, "close(): %s.\n", strerror(errno));
-        return EXIT_FAILURE;
+            fprintf(stderr, "close(): %s.\n", strerror(errno));
+            return EXIT_FAILURE;
     }
 
     return EXIT_SUCCESS;

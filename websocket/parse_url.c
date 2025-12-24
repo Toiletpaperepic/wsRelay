@@ -61,7 +61,7 @@ struct parsed_url parse_url(const char* url) {
                 strncpy(port, url + cursor, i - cursor);
                 port[i - cursor] = '\0';
 
-                purl.port = atoi(port);
+                purl.port = atoi(port); // fixme: this function is susceptible to overflow, it works fine but we may want to replace it.
 
                 cursor = i;
                 break;

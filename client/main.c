@@ -10,19 +10,24 @@ static void catch_function(int signo) {
 #define ROUTE_CLIENT_CONNECTION 0
 #define ROUTE_WEBSOCKET 1
 
-void* route(void* client_connection_pointer) {
+struct routedata {
+    const char* out_url;
+    int in_socket;
+};
+
+void* route(void* ptrrd) {
     printf("Route thread started!\n");
     
-    // immediately copy the client pointer, otherwise you'll get data races between main and this thread.
-    int cilent_connection = 0;
-    memcpy(&cilent_connection, client_connection_pointer, sizeof(int));
+    // immediately copy route data, otherwise you'll get data races between main and this thread.
+    struct routedata rd;
+    memcpy(&rd, ptrrd, sizeof(struct routedata));
 
     // start a new websocket connection
     printf("Starting websocket connection...\n");
-    struct connection ws_connection = websocket_connect(parse_url("ws://192.168.68.72:8000/connect"));
-    // printf("started a new connection route to %s:%i/%s\n", ws_connection.url.address, ws_connection.url.port, ws_connection.url.path);
-    free((void*)ws_connection.url.address);
-    free((void*)ws_connection.url.path);
+    struct connection out_websocket = websocket_connect(parse_url(rd.out_url));
+    // printf("started a new connection route to %s:%i/%s\n", out_websocket.url.address, out_websocket.url.port, out_websocket.url.path);
+    free((void*)out_websocket.url.address);
+    free((void*)out_websocket.url.path);
 
     // create a epoll file discriptor
     int epollfd = epoll_create1(0);
@@ -35,7 +40,7 @@ void* route(void* client_connection_pointer) {
     struct epoll_event epolleventlocalsocket;
     epolleventlocalsocket.data.u32 = ROUTE_CLIENT_CONNECTION;
     epolleventlocalsocket.events = EPOLLIN;
-    if (epoll_ctl(epollfd, EPOLL_CTL_ADD, cilent_connection, &epolleventlocalsocket) < 0) {
+    if (epoll_ctl(epollfd, EPOLL_CTL_ADD, rd.in_socket, &epolleventlocalsocket) < 0) {
         fprintf(stderr, "epoll_ctl(): %s.\n", strerror(errno));
         goto FAILURE;
     }
@@ -43,7 +48,7 @@ void* route(void* client_connection_pointer) {
     struct epoll_event epolleventwebsocket;
     epolleventwebsocket.data.u32 = ROUTE_WEBSOCKET;
     epolleventwebsocket.events = EPOLLIN;
-    if (epoll_ctl(epollfd, EPOLL_CTL_ADD, ws_connection.fd, &epolleventwebsocket) < 0) {
+    if (epoll_ctl(epollfd, EPOLL_CTL_ADD, out_websocket.fd, &epolleventwebsocket) < 0) {
         fprintf(stderr, "epoll_ctl(): %s.\n", strerror(errno));
         goto FAILURE;
     }
@@ -64,7 +69,7 @@ void* route(void* client_connection_pointer) {
             for (int i = 0; i < fdevents; i++) {
                 if (epe[i].data.u32 == ROUTE_CLIENT_CONNECTION) {
                     uint8_t buffer[1024] = {};
-                    int bytesrecv = recv(cilent_connection, buffer, sizeof(buffer), 0);
+                    int bytesrecv = recv(rd.in_socket, buffer, sizeof(buffer), 0);
 
                     if (bytesrecv < 0) {
                         // if (bytesrecv == ECONNRESET...) {
@@ -76,15 +81,15 @@ void* route(void* client_connection_pointer) {
                     } else if (bytesrecv == 0) {
                         printf("inbound disconnected.\n");
 
-                        websocket_send(ws_connection, NULL, 0, CLOSE, true);
+                        websocket_send(out_websocket, NULL, 0, CLOSE, true);
 
                         loop = !loop;
                         break;
                     }
                     
-                    websocket_send(ws_connection, buffer, bytesrecv, BINARY, true);
+                    websocket_send(out_websocket, buffer, bytesrecv, BINARY, true);
                 } else if (epe[i].data.u32 == ROUTE_WEBSOCKET) {
-                    struct message msg = websocket_recv(ws_connection);
+                    struct message msg = websocket_recv(out_websocket);
                     assert(msg.opcode != CONTINUATION); // should've already been handled.
                     
                     if (msg.opcode == CLOSE) {
@@ -106,7 +111,7 @@ void* route(void* client_connection_pointer) {
                             printf(", No close frame provided.\n");
                         }
 
-                        websocket_send(ws_connection, NULL, 0, CLOSE, true);
+                        websocket_send(out_websocket, NULL, 0, CLOSE, true);
 
                         loop = !loop;
                         free(msg.buffer);
@@ -114,11 +119,11 @@ void* route(void* client_connection_pointer) {
                     } else if (msg.opcode == TEXT) {
                         printf("Unsupported opcode.\n");
                     } else if (msg.opcode == PING) {
-                        websocket_send(ws_connection, NULL, 0, PONG, true);
+                        websocket_send(out_websocket, NULL, 0, PONG, true);
                     } else if (msg.opcode == PONG) {
                         // ...
                     } else if (msg.opcode == BINARY) {
-                        if (send(cilent_connection, msg.buffer, msg.size, 0) < 0) {
+                        if (send(rd.in_socket, msg.buffer, msg.size, 0) < 0) {
                             fprintf(stderr, "send(): %s.\n", strerror(errno));
                             free(msg.buffer);
                             goto FAILURE;
@@ -127,20 +132,20 @@ void* route(void* client_connection_pointer) {
 
                     free(msg.buffer);
                 }
-            }
+            }ws://127.0.0.1:8000/connect
         }
     }
 
     printf("Route thread exiting...\n");
 
-    if (close(cilent_connection) < 0 && close(ws_connection.fd) < 0 && close(epollfd) < 0) {
+    if (close(rd.in_socket) < 0 && close(out_websocket.fd) < 0 && close(epollfd) < 0) {
         fprintf(stderr, "close(): %s.\n", strerror(errno));
         return (void*)EXIT_FAILURE;
     }
 
     return (void*)EXIT_SUCCESS;
 FAILURE:
-    if (close(cilent_connection) < 0 && close(ws_connection.fd) < 0 && close(epollfd) < 0) {
+    if (close(rd.in_socket) < 0 && close(out_websocket.fd) < 0 && close(epollfd) < 0) {
         fprintf(stderr, "close(): %s.\n", strerror(errno));
         return (void*)EXIT_FAILURE;
     }
@@ -149,11 +154,11 @@ FAILURE:
 }
 
 int main(int argc, char *argv[]) {
-    // register_argument(arg1, NULL, "out-url", IS_STRING, false);
+    register_argument(arg0, NULL, "out-url", IS_STRING, true);
 
-    // if (parse_args(argc, argv, &arg1)) {
-    //     return EXIT_FAILURE;
-    // }
+    if (parse_args(argc, argv, &arg0)) {
+        return EXIT_FAILURE;
+    }
 
     printf("Starting local connection...\n");
 
@@ -183,17 +188,18 @@ int main(int argc, char *argv[]) {
             break;
         }
         
-        int new_connection = socket_accept(socket);
-
-        if (new_connection < 0) {
+        struct routedata rd;
+        rd.in_socket = socket_accept(socket);
+        if (rd.in_socket < 0) {
             if (status != SIGINT) {
                 fprintf(stderr, "failed to accept a new connection.\n");
             }
             break;
         }
+        rd.out_url = (char*)arg0.value;
 
         threads[threads_total - 1] = malloc(sizeof(pthread_t*));
-        pthread_create(threads[threads_total - 1], NULL, &route, (void*)&new_connection);
+        pthread_create(threads[threads_total - 1], NULL, &route, (void*)&rd);
         
         threads_total++;
         pthread_t** tmp = realloc(threads, threads_total * sizeof(*threads));
@@ -218,6 +224,22 @@ int main(int argc, char *argv[]) {
             fprintf(stderr, "close(): %s.\n", strerror(errno));
             return EXIT_FAILURE;
     }
+
+    struct Argument* nextarg = &arg0;
+        while (true) {
+            if (nextarg->value != NULL && nextarg->type != IS_BOOL) {
+                // printf("freed %s\n", nextarg->name);
+                free(nextarg->value);
+            } else {
+                // printf("not freed %s\n", nextarg->name);
+            }
+        
+            if (nextarg->next == NULL) {
+                break;
+            } else {
+                nextarg = nextarg->next;
+            }
+        }
 
     return EXIT_SUCCESS;
 }

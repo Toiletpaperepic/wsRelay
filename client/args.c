@@ -20,7 +20,6 @@ bool parse_args(int argc, char *argv[], struct Argument* registerargs) {
 
             printf("%s == %s\n", dashdashname, argv[i]);
             if (strcmp(dashdashname, argv[i]) == 0) {
-
                 if (nextarg->type == IS_BOOL) {
                     nextarg->value = (void*)true;
                 } else if (i + 1 != argc) /*if operand needed*/ {
@@ -60,6 +59,22 @@ bool parse_args(int argc, char *argv[], struct Argument* registerargs) {
             } else {
                 nextarg = nextarg->next;
             }
+        }
+    }
+
+    struct Argument* nextarg = registerargs;
+    while (true) {
+        assert(nextarg->type == IS_BOOL ? nextarg->required != true : true); // required is NOT allowed if the type is a bool.
+    
+        if (nextarg->value == NULL && nextarg->required == true) {
+            printf("Argument --%s is required.\n", nextarg->name);
+            return true;
+        }
+    
+        if (nextarg->next == NULL) {
+            break;
+        } else {
+            nextarg = nextarg->next;
         }
     }
 

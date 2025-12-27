@@ -1,6 +1,4 @@
 #include "main.h"
-#include <stdio.h>
-#include <stdlib.h>
 
 volatile sig_atomic_t status = 0;
 
@@ -135,33 +133,14 @@ void* route(void* client_connection_pointer) {
 
     printf("Route thread exiting...\n");
 
-    if (close(cilent_connection) < 0) {
+    if (close(cilent_connection) < 0 && close(ws_connection.fd) < 0 && close(epollfd) < 0) {
         fprintf(stderr, "close(): %s.\n", strerror(errno));
         return (void*)EXIT_FAILURE;
     }
 
-    if (close(ws_connection.fd) < 0) {
-        fprintf(stderr, "close(): %s.\n", strerror(errno));
-        return (void*)EXIT_FAILURE;
-    }
-
-    if (close(epollfd) < 0) {
-        fprintf(stderr, "close(): %s.\n", strerror(errno));
-        return (void*)EXIT_FAILURE;
-    }
     return (void*)EXIT_SUCCESS;
 FAILURE:
-    if (close(cilent_connection) < 0) {
-        fprintf(stderr, "close(): %s.\n", strerror(errno));
-        return (void*)EXIT_FAILURE;
-    }
-
-    if (close(ws_connection.fd) < 0) {
-        fprintf(stderr, "close(): %s.\n", strerror(errno));
-        return (void*)EXIT_FAILURE;
-    }
-
-    if (close(epollfd) < 0) {
+    if (close(cilent_connection) < 0 && close(ws_connection.fd) < 0 && close(epollfd) < 0) {
         fprintf(stderr, "close(): %s.\n", strerror(errno));
         return (void*)EXIT_FAILURE;
     }
@@ -170,6 +149,12 @@ FAILURE:
 }
 
 int main(int argc, char *argv[]) {
+    // register_argument(arg1, NULL, "out-url", IS_STRING, false);
+
+    // if (parse_args(argc, argv, &arg1)) {
+    //     return EXIT_FAILURE;
+    // }
+
     printf("Starting local connection...\n");
 
     struct sigaction a;

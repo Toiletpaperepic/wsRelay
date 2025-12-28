@@ -1,4 +1,5 @@
 #include <base64.h>
+#include <stdint.h>
 #include <sys/random.h>
 #include <assert.h>
 #include <stdlib.h>
@@ -36,17 +37,9 @@ void make_http_header(struct parsed_url purl, char* message) {
     // WebSocket Version: 
     strcat(message, "Sec-WebSocket-Version: 13\n");
 
-    char nonce[16 + 1];
+    uint8_t nonce[16];
     getrandom(&nonce, sizeof(nonce), 0);
-
-    for (int i = 0; i < sizeof(nonce); i++) {
-        while (nonce[i] == '\0') {
-            getrandom(&nonce[i], sizeof(char), 0);
-        }
-    }
-
-    nonce[sizeof(nonce) - 1] = '\0';
-    const char* key = base64_encode_no_lf(&nonce, sizeof(nonce) - 1, NULL);
+    const char* key = base64_encode_no_lf(&nonce, sizeof(nonce), NULL);
 
     assert(strlen(key) == 24);
     

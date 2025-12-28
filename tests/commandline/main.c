@@ -60,18 +60,29 @@ int main() {
 
         register_argument(arg0, NULL, "test", IS_STRING, true);
 
-        rcheck(parse_args(argc, argv, &arg0) == true, "parsing command line failed to failed without the \"--test\" argument present.");
+        rcheck(parse_args(argc, argv, &arg0) == true, "parsing command line failed to fail without the \"--test\" argument present.");
         free(arg0.value);
     }
 
     // {
-    //     char* argv[] = {"./a.out", /*"--test", "Hello, World!"*/}; 
+    //     char* argv[] = {"./a.out", /*"--test"*/}; 
     //     int argc = sizeof(argv) / sizeof(char*);
 
     //     register_argument(arg0, NULL, "test", IS_BOOL, true);
 
-    //     rcheck(parse_args(argc, argv, &arg0) == true, "parsing command line failed to failed without the \"--test\" argument present.");
+    //     rcheck(parse_args(argc, argv, &arg0) == true, "parsing command line failed to fail when a bool is required.");
     // }
     
+    {
+        char* argv[] = {"./a.out", "--test", "-100"}; 
+        int argc = sizeof(argv) / sizeof(char*);
+
+        register_argument(arg0, NULL, "test", IS_UNSIGNED_INT, true);
+
+        rcheck(parse_args(argc, argv, &arg0) == true, "parsing command line failed to fail when using unexpected negative numbers.");
+
+        free(arg0.value);
+    }
+
     return EXIT_SUCCESS;
 }

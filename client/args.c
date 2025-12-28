@@ -1,9 +1,52 @@
 #include <assert.h>
+#include <errno.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
 #include "args.h"
+
+int32_t strtoint(const char* str) {
+    int32_t num = 0;
+
+    if (str[0] == '-'){
+        for (int i = 1; str[i] != '\0'; i++) {
+            if (str[i] >= 48 && str[i] <= 57) {
+                num = num * 10 + (str[i] - 48);
+            }
+            else {
+                return INT32_MAX;
+            }
+        }
+        num = -num;
+    } else {
+        for (int i = 0; str[i] != '\0'; i++) {
+            if (str[i] >= 48 && str[i] <= 57) {
+                num = num * 10 + (str[i] - 48);
+            }
+            else {
+                return INT32_MAX;
+            }
+        }
+    }
+
+    return num;
+}
+
+uint32_t strtouint(const char* str) {
+    uint32_t num = 0;
+
+    for (int i = 0; str[i] != '\0'; i++) {
+        if (str[i] >= 48 && str[i] <= 57) {
+            num = num * 10 + (str[i] - 48);
+        }
+        else {
+            return UINT32_MAX;
+        }
+    }
+
+    return num;
+}
 
 void help() {
     // todo: ...
@@ -26,13 +69,21 @@ bool parse_args(int argc, char *argv[], struct Argument* registerargs) {
                     switch (nextarg->type) {
                         case IS_UNSIGNED_INT:
                             nextarg->value = malloc(sizeof(unsigned int));
-                            unsigned int x = strtoul(argv[i + 1], NULL, 0);
+                            unsigned int x = strtouint(argv[i + 1]);
+                            if (x == UINT32_MAX) {
+                                fprintf(stderr, "strtouint() Failed: invalid parameter.\n");
+                                return true;
+                            }
                             memcpy(nextarg->value, &x, sizeof(unsigned int));
                             i++;
                             break;
                         case IS_INT:
                             nextarg->value = malloc(sizeof(int));
-                            int y = strtol(argv[i + 1], NULL, 0);
+                            int y = strtoint(argv[i + 1]);
+                            if (y == INT32_MAX) {
+                                fprintf(stderr, "strtoint() Failed: invalid parameter.\n");
+                                return true;
+                            }
                             memcpy(nextarg->value, &y, sizeof(int));
                             i++;
                             break;

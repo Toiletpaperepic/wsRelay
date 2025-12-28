@@ -177,8 +177,8 @@ int main(int argc, char *argv[]) {
     pthread_t** threads = malloc(threads_total * sizeof(*threads));
 
     int socket = socket_bind(INADDR_ANY, arg1.value == NULL ? 48375 : *(int*)arg1.value);
-    if (socket < -1) {
-            fprintf(stderr, "socket failed to bind.\n");
+    if (socket < 0) {
+        fprintf(stderr, "socket failed to bind.\n");
         return EXIT_FAILURE;
     }
 

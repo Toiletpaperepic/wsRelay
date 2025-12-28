@@ -155,8 +155,9 @@ FAILURE:
 
 int main(int argc, char *argv[]) {
     register_argument(arg0, NULL, "out-url", IS_STRING, true);
+    register_argument(arg1, &arg0, "port", IS_UNSIGNED_INT, false);
 
-    if (parse_args(argc, argv, &arg0)) {
+    if (parse_args(argc, argv, &arg1)) {
         return EXIT_FAILURE;
     }
 
@@ -175,7 +176,7 @@ int main(int argc, char *argv[]) {
     unsigned int threads_total = 1;
     pthread_t** threads = malloc(threads_total * sizeof(*threads));
 
-    int socket = socket_bind(INADDR_ANY, 48375);
+    int socket = socket_bind(INADDR_ANY, arg1.value == NULL ? 48375 : *(int*)arg1.value);
     if (socket < -1) {
             fprintf(stderr, "socket failed to bind.\n");
         return EXIT_FAILURE;

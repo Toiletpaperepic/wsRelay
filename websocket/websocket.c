@@ -28,16 +28,14 @@ struct connection websocket_connect(struct parsed_url purl) {
         exit(EXIT_FAILURE);
     }
     con.fd = fd;
-    
-    struct in_addr addr;
-    if (inet_aton(con.url.address, &addr) < 0) {
-        fprintf(stderr, "inet_aton(): failed, Invalid address.\n");
-    }
-    
+
     struct sockaddr_in serverAddress;
     serverAddress.sin_family = AF_INET;
     serverAddress.sin_port = htons(con.url.port);
-    serverAddress.sin_addr.s_addr = addr.s_addr;
+
+    if (inet_pton(AF_INET, con.url.address, &serverAddress.sin_addr) < 0) {
+        fprintf(stderr, "inet_aton(): failed, Invalid address.\n");
+    }
     
     if (connect(fd, (struct sockaddr*)&serverAddress, sizeof(serverAddress)) < 0) {
         fprintf(stderr, "connect(): %s.\n", strerror(errno));

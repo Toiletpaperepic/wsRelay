@@ -1,6 +1,16 @@
+#ifdef __WIN32__
+#include <winsock2.h>
+#include <windows.h>
+#include <ws2tcpip.h>
+#elif defined(__ANDROID__) && __ANDROID_API__ < 28
+#include <sys/syscall.h>
+#include <unistd.h>
+#define getrandom(buf,buflen,flags) syscall(SYS_getrandom,buf,buflen,flags)
+#else
 #include <sys/random.h>
 #include <arpa/inet.h>
 #include <endian.h>
+#endif
 #include <stdint.h>
 #include <string.h>
 #include <stdlib.h>
@@ -11,12 +21,6 @@
 #include "http_header.h"
 
 // https://en.wikipedia.org/wiki/WebSocket#Protocol
-
-#if defined(__ANDROID__) && __ANDROID_API__ < 28
-#include <sys/syscall.h>
-#include <unistd.h>
-#define getrandom(buf,buflen,flags) syscall(SYS_getrandom,buf,buflen,flags)
-#endif
 
 struct connection websocket_connect(struct parsed_url purl) {
     struct connection con;
@@ -115,7 +119,30 @@ void websocket_send(struct connection con, void* buffer, uint64_t size, enum opc
     }
 
     uint8_t maskingkey[4] = {};
+#if __WIN32__
+    BCRYPT_ALG_HANDLE handle;
+    NTSTATUS error;
+
+    error = BCryptOpenAlgorithmProvider(&handle, BCRYPT_RNG_ALGORITHM,NULL,0);
+    if (!BCRYPT_SUCCESS(error)) {
+        fprintf(stderr, "BCryptOpenAlgorithmProvider(): %lX.\n", error);
+        exit(EXIT_FAILURE);
+    }
+    
+    error = BCryptGenRandom(&handle, (unsigned char*)maskingkey, sizeof(maskingkey), 0);
+    if (!BCRYPT_SUCCESS(error)) {
+        fprintf(stderr, "BCryptGenRandom(): %lX.\n", error);
+        exit(EXIT_FAILURE);
+    }
+    
+    error = BCryptCloseAlgorithmProvider(handle,0);
+    if (!BCRYPT_SUCCESS(error)) {
+        fprintf(stderr, "BCryptCloseAlgorithmProvider(): %lX.\n", error);
+        exit(EXIT_FAILURE);
+    }
+#else
     getrandom(&maskingkey, sizeof(maskingkey), 0);
+#endif
 
     printf("masking key: ");
     for (int i = 0; i < sizeof(maskingkey); i++)
@@ -128,11 +155,15 @@ void websocket_send(struct connection con, void* buffer, uint64_t size, enum opc
     memcpy(payload + 1, &byte1, sizeof(byte1));
 
     if (extraPayloadlength == sizeof(uint16_t)) {
-        uint16_t size_big_endian = htobe16(size);
-        memcpy(payload + 2, &size_big_endian, extraPayloadlength);
+        uint16_t size_network_order = htons(size);
+        memcpy(payload + 2, &size_network_order, extraPayloadlength);
     } else if (extraPayloadlength == sizeof(uint64_t)) {
-        uint64_t size_big_endian = htobe64(size);
-        memcpy(payload + 2, &size_big_endian, extraPayloadlength);
+#if __WIN32__
+        uint64_t size_network_order = htonll(size);
+#else
+        uint64_t size_network_order = htobe64(size);
+#endif
+        memcpy(payload + 2, &size_network_order, extraPayloadlength);
     }
 
     memcpy(payload + 2 + extraPayloadlength, maskingkey, sizeof(maskingkey));
@@ -204,18 +235,22 @@ struct message websocket_recv(struct connection con) {
         uint64_t payload_size = header[1] & 0b01111111;
 
         if (payload_size == 126) {
-            if (recv(con.fd, &payload_size, sizeof(uint16_t), 0) < 0) {
+            if (recv(con.fd, (char*)&payload_size, sizeof(uint16_t), 0) < 0) {
                 fprintf(stderr, "recv(): %s.\n", strerror(errno));
                 exit(EXIT_FAILURE);
             }
-            payload_size = be16toh(payload_size);
+            payload_size = htons(payload_size);
         }
         else if (payload_size == 127) {
-            if (recv(con.fd, &payload_size, sizeof(uint64_t), 0) < 0) {
+            if (recv(con.fd, (char*)&payload_size, sizeof(uint64_t), 0) < 0) {
                 fprintf(stderr, "recv(): %s.\n", strerror(errno));
                 exit(EXIT_FAILURE);
             }
+#if __WIN32__
+            payload_size = htonll(payload_size);
+#else
             payload_size = be64toh(payload_size);
+#endif
         }
 
         printf("payload size: %lu, current buffer size: %lu\n", payload_size, msg.size);

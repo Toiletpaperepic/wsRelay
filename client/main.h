@@ -1,5 +1,10 @@
+#if __WIN32__
+#include <winsock2.h>
+#include <windows.h>
+#else
 #include <sys/socket.h>
 #include <sys/epoll.h>
+#endif
 #include <pthread.h>
 #include <string.h>
 #include <unistd.h>

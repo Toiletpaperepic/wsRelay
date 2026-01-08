@@ -163,6 +163,8 @@ int main(int argc, char *argv[]) {
 
     printf("Starting local connection...\n");
 
+#if __WIN32__
+#else
     struct sigaction a;
     a.sa_handler = catch_function;
     a.sa_flags = 0;
@@ -172,6 +174,7 @@ int main(int argc, char *argv[]) {
         fprintf(stderr, "An error occurred while setting up a signal handler.\n");
         return EXIT_FAILURE;
     }
+#endif
     
     unsigned int threads_total = 1;
     pthread_t** threads = malloc(threads_total * sizeof(*threads));
@@ -222,25 +225,25 @@ int main(int argc, char *argv[]) {
     free(threads);
     
     if (close(socket) < 0) {
-            fprintf(stderr, "close(): %s.\n", strerror(errno));
-            return EXIT_FAILURE;
+        fprintf(stderr, "close(): %s.\n", strerror(errno));
+        return EXIT_FAILURE;
     }
 
     struct Argument* nextarg = &arg0;
-        while (true) {
-            if (nextarg->value != NULL && nextarg->type != IS_BOOL) {
-                // printf("freed %s\n", nextarg->name);
-                free(nextarg->value);
-            } else {
-                // printf("not freed %s\n", nextarg->name);
-            }
-        
-            if (nextarg->next == NULL) {
-                break;
-            } else {
-                nextarg = nextarg->next;
-            }
+    while (true) {
+        if (nextarg->value != NULL && nextarg->type != IS_BOOL) {
+            // printf("freed %s\n", nextarg->name);
+            free(nextarg->value);
+        } else {
+            // printf("not freed %s\n", nextarg->name);
         }
+    
+        if (nextarg->next == NULL) {
+            break;
+        } else {
+            nextarg = nextarg->next;
+        }
+    }
 
     return EXIT_SUCCESS;
 }

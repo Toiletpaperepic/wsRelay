@@ -20,8 +20,6 @@
 #include "websocket.h"
 #include "http_header.h"
 
-// https://en.wikipedia.org/wiki/WebSocket#Protocol
-
 struct connection websocket_connect(struct parsed_url purl) {
     struct connection con;
     con.url = purl;
@@ -155,7 +153,11 @@ void websocket_send(struct connection con, void* buffer, uint64_t size, enum opc
     memcpy(payload + 1, &byte1, sizeof(byte1));
 
     if (extraPayloadlength == sizeof(uint16_t)) {
+#if __WIN32__
         uint16_t size_network_order = htons(size);
+#else
+        uint16_t size_network_order = htobe16(size);
+#endif
         memcpy(payload + 2, &size_network_order, extraPayloadlength);
     } else if (extraPayloadlength == sizeof(uint64_t)) {
 #if __WIN32__

@@ -61,7 +61,7 @@ bool parse_args(int argc, char *argv[], struct Argument* registerargs) {
             memcpy(dashdashname, "--", sizeof("--"));
             strcat(dashdashname, nextarg->name);
 
-            printf("%s == %s\n", dashdashname, argv[i]);
+            // printf("%s == %s\n", dashdashname, argv[i]);
             if (strcmp(dashdashname, argv[i]) == 0) {
                 if (nextarg->type == IS_BOOL) {
                     nextarg->value = (void*)true;

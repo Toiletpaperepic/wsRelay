@@ -1,4 +1,13 @@
+#ifdef __WIN32__
+#include <windows.h>
+// #include <stdio.h>
+#elif defined(__ANDROID__) && __ANDROID_API__ < 28
+#include <sys/syscall.h>
+#include <unistd.h>
+#define getrandom(buf,buflen,flags) syscall(SYS_getrandom,buf,buflen,flags)
+#else
 #include <sys/random.h>
+#endif
 #include <base64.h>
 #include <stdint.h>
 #include <assert.h>
@@ -10,12 +19,6 @@
 #include <stdio.h>
 #include "common_macros.h"
 #include "websocket.h"
-
-#if defined(__ANDROID__) && __ANDROID_API__ < 28
-#include <sys/syscall.h>
-#include <unistd.h>
-#define getrandom(buf,buflen,flags) syscall(SYS_getrandom,buf,buflen,flags)
-#endif
 
 void appendchar(char** destinationstring, const char* sourcestring) { 
     resizebuffer(*destinationstring, strlen(*destinationstring) + strlen(sourcestring) + 1); 
@@ -65,8 +68,12 @@ void make_user_agent(char** destinationstring) {
     #endif
     
     appendchar(destinationstring, "; +https://github.com/Toiletpaperepic/wsRelay/) ");
-    
+
+#if !__WIN32__
     char hostname[HOST_NAME_MAX];
+#else
+    char hostname[256];
+#endif
     if (gethostname(hostname, sizeof(hostname)) < 0) {
         fprintf(stderr, "gethostname(): %s.\n", strerror(errno));
     } else {
@@ -107,7 +114,30 @@ const char* make_http_header(struct parsed_url purl) {
     appendchar(&message, "Sec-WebSocket-Version: 13\n");
 
     uint8_t nonce[16];
+#if __WIN32__
+    BCRYPT_ALG_HANDLE handle;
+    NTSTATUS error;
+
+    error = BCryptOpenAlgorithmProvider(&handle, BCRYPT_RNG_ALGORITHM,NULL,0);
+    if (!BCRYPT_SUCCESS(error)) {
+        fprintf(stderr, "BCryptOpenAlgorithmProvider(): %lX.\n", error);
+        exit(EXIT_FAILURE);
+    }
+    
+    error = BCryptGenRandom(&handle, (unsigned char*)nonce, sizeof(nonce), 0);
+    if (!BCRYPT_SUCCESS(error)) {
+        fprintf(stderr, "BCryptGenRandom(): %lX.\n", error);
+        exit(EXIT_FAILURE);
+    }
+    
+    error = BCryptCloseAlgorithmProvider(handle,0);
+    if (!BCRYPT_SUCCESS(error)) {
+        fprintf(stderr, "BCryptCloseAlgorithmProvider(): %lX.\n", error);
+        exit(EXIT_FAILURE);
+    }
+#else
     getrandom(&nonce, sizeof(nonce), 0);
+#endif
     const char* key = base64_encode_no_lf(&nonce, sizeof(nonce), NULL);
 
     assert(strlen(key) == 24);

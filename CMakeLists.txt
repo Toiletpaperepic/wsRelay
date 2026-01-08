@@ -79,6 +79,13 @@ add_library(websocket SHARED
 
 target_include_directories(websocket PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/websocket)
 target_link_libraries(websocket PUBLIC base64 commoninclude)
+if(WIN32)
+    find_library(WSOCK32_LIBRARY wsock32)
+    find_library(WS2_32_LIBRARY ws2_32)
+    find_library(BCRYPT_LIBRARY bcrypt)
+
+    target_link_libraries(websocket PUBLIC ${WSOCK32_LIBRARY} ${WS2_32_LIBRARY} ${BCRYPT_LIBRARY})
+endif()
 set_target_properties(websocket PROPERTIES
     OUTPUT_NAME ${PROJECT_NAME}-websocket
     VERSION ${CMAKE_PROJECT_VERSION}

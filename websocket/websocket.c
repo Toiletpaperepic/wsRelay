@@ -1,9 +1,22 @@
-#include <netinet/in.h>
+#ifdef __WIN32__
+#include <winsock2.h>
+#include <windows.h>
+#include <ws2tcpip.h>
+#else
+#if defined(__ANDROID__) && __ANDROID_API__ < 28
+#include <sys/syscall.h>
+#include <unistd.h>
+#define getrandom(buf,buflen,flags) syscall(SYS_getrandom,buf,buflen,flags)
+#else
 #include <sys/random.h>
+#endif
 #include <sys/socket.h>
+#include <netinet/in.h>
 #include <sys/types.h>
-#include <stdbool.h>
 #include <endian.h>
+#include <netdb.h>
+#endif
+#include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
 #include <stdlib.h>
@@ -11,23 +24,15 @@
 #include <unistd.h>
 #include <errno.h>
 #include <stdio.h>
-#include <netdb.h>
 #include "common_macros.h"
 #include "websocket.h"
 #include "http.h"
 
 // https://en.wikipedia.org/wiki/WebSocket#Protocol
 
-#if defined(__ANDROID__) && __ANDROID_API__ < 28
-#include <sys/syscall.h>
-#include <unistd.h>
-#define getrandom(buf,buflen,flags) syscall(SYS_getrandom,buf,buflen,flags)
-#endif
-
 int websocket_connect(struct parsed_url purl) {
     struct addrinfo *result, *ai, hints;
     int error, fd;
-
     memset(&hints, 0, sizeof hints);
     hints.ai_family = AF_UNSPEC;
     hints.ai_socktype = SOCK_STREAM;
@@ -35,11 +40,15 @@ int websocket_connect(struct parsed_url purl) {
     // resolve the domain name into a list of addresses
     error = getaddrinfo(purl.address, NULL, &hints, &result);
     if (error != 0) {
+#if !__WIN32__
         if (error == EAI_SYSTEM) {
             fprintf(stderr, "getaddrinfo: %s", strerror(errno));
         } else {
             fprintf(stderr, "getaddrinfo: gai_strerror: %s\n", gai_strerror(error));
         }
+#else
+        fprintf(stderr, "getaddrinfo: %i", WSAGetLastError());
+#endif
         return -1;
     }
 
@@ -129,7 +138,30 @@ int websocket_send(int fd, void* buffer, uint64_t size, enum opcodes opcode, boo
     }
 
     uint8_t maskingkey[4] = {};
+#if __WIN32__
+    BCRYPT_ALG_HANDLE handle;
+    NTSTATUS error;
+
+    error = BCryptOpenAlgorithmProvider(&handle, BCRYPT_RNG_ALGORITHM,NULL,0);
+    if (!BCRYPT_SUCCESS(error)) {
+        fprintf(stderr, "BCryptOpenAlgorithmProvider(): %lX.\n", error);
+        exit(EXIT_FAILURE);
+    }
+    
+    error = BCryptGenRandom(&handle, (unsigned char*)maskingkey, sizeof(maskingkey), 0);
+    if (!BCRYPT_SUCCESS(error)) {
+        fprintf(stderr, "BCryptGenRandom(): %lX.\n", error);
+        exit(EXIT_FAILURE);
+    }
+    
+    error = BCryptCloseAlgorithmProvider(handle,0);
+    if (!BCRYPT_SUCCESS(error)) {
+        fprintf(stderr, "BCryptCloseAlgorithmProvider(): %lX.\n", error);
+        exit(EXIT_FAILURE);
+    }
+#else
     getrandom(&maskingkey, sizeof(maskingkey), 0);
+#endif
 
     printf("masking key: ");
     for (int i = 0; i < sizeof(maskingkey); i++)
@@ -142,11 +174,15 @@ int websocket_send(int fd, void* buffer, uint64_t size, enum opcodes opcode, boo
     memcpy(payload + 1, &byte1, sizeof(byte1));
 
     if (extraPayloadlength == sizeof(uint16_t)) {
-        uint16_t size_big_endian = htobe16(size);
-        memcpy(payload + 2, &size_big_endian, extraPayloadlength);
+        uint16_t size_network_order = htons(size);
+        memcpy(payload + 2, &size_network_order, extraPayloadlength);
     } else if (extraPayloadlength == sizeof(uint64_t)) {
-        uint64_t size_big_endian = htobe64(size);
-        memcpy(payload + 2, &size_big_endian, extraPayloadlength);
+#if __WIN32__
+        uint64_t size_network_order = htonll(size);
+#else
+        uint64_t size_network_order = htobe64(size);
+#endif
+        memcpy(payload + 2, &size_network_order, extraPayloadlength);
     }
 
     memcpy(payload + 2 + extraPayloadlength, maskingkey, sizeof(maskingkey));
@@ -215,18 +251,22 @@ struct message websocket_recv(int fd) {
         uint64_t payload_size = header[1] & 0b01111111;
 
         if (payload_size == 126) {
-            if (recv(fd, &payload_size, sizeof(uint16_t), 0) < 0) {
+            if (recv(fd, (char*)&payload_size, sizeof(uint16_t), 0) < 0) {
                 fprintf(stderr, "recv(): %s.\n", strerror(errno));
                 msg.error = EXIT_FAILURE; return msg;
             }
-            payload_size = be16toh(payload_size);
+            payload_size = htons(payload_size);
         }
         else if (payload_size == 127) {
-            if (recv(fd, &payload_size, sizeof(uint64_t), 0) < 0) {
+            if (recv(fd, (char*)&payload_size, sizeof(uint64_t), 0) < 0) {
                 fprintf(stderr, "recv(): %s.\n", strerror(errno));
                 msg.error = EXIT_FAILURE; return msg;
             }
+#if __WIN32__
+            payload_size = htonll(payload_size);
+#else
             payload_size = be64toh(payload_size);
+#endif
         }
 
         printf("payload size: %lu, current buffer size: %lu\n", payload_size, ((struct message_data*)msg.msgdata)->size);

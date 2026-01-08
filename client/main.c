@@ -259,6 +259,7 @@ int main(int argc, char *argv[]) {
     
     printf("Starting local connection...\n");
 
+#if !__WIN32__
     struct sigaction a;
     a.sa_handler = catch_function;
     a.sa_flags = 0;
@@ -269,6 +270,7 @@ int main(int argc, char *argv[]) {
         free((void*)purl.path);
         return EXIT_FAILURE;
     }
+#endif
 
     int socket = socket_bind(INADDR_ANY, port);
     if (socket < 0) {

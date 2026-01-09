@@ -1,5 +1,11 @@
+#if __WIN32__
+#include <winsock2.h>
+#include <windows.h>
+#include <wepoll.h>
+#else
 #include <sys/socket.h>
 #include <sys/epoll.h>
+#endif
 #include <pthread.h>
 #include <stdbool.h>
 #include <string.h>
@@ -71,7 +77,11 @@ void* route(void* ptrrd) {
     enum thread_error error = 0;
 
     // create a epoll file discriptor
+#if __WIN32__
+    HANDLE epollfd = epoll_create1(0);
+#else
     int epollfd = epoll_create1(0);
+#endif
     if (epollfd < 0) {
         fprintf(stderr, "epoll_create1(): %s.\n", strerror(errno));
         error = EPOLL_ERROR;
@@ -140,7 +150,11 @@ void* route(void* ptrrd) {
                             if (((struct message_data*)msg.msgdata)->size > 0) {
                                 uint16_t statuscode = 0;
                                 memcpy(&statuscode, ((struct message_data*)msg.msgdata)->buffer, sizeof(uint16_t));
-                                statuscode = be16toh(statuscode);
+#if __WIN32__
+                            statuscode = htons(statuscode);
+#else
+                            statuscode = be16toh(statuscode);
+#endif
                                 printf(", status code: %i", statuscode);
         
                                 char reason[((struct message_data*)msg.msgdata)->size - sizeof(statuscode) + 1];
@@ -192,9 +206,14 @@ void* route(void* ptrrd) {
     }
 
     printf("Route thread exiting...\n");
-
     // TODO: this would be more nicer if these were macros.
-    if (close(rd.in_socket_fd) < 0 && close(rd.out_websocket_fd) < 0 && close(epollfd) < 0) {
+    if (close(rd.in_socket_fd) < 0 && close(rd.out_websocket_fd) < 0 && 
+#if __WIN32__
+        epoll_close(epollfd)
+#else
+        close(epollfd)
+#endif
+        < 0) {
         fprintf(stderr, "close(): %s.\n", strerror(errno));
         return (void*)EXIT_FAILURE;
     }

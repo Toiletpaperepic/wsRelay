@@ -54,6 +54,28 @@ else()
 endif()
 
 # ----------utils----------
+if(WIN32)
+    include(FetchContent)
+
+    FetchContent_Declare(
+        wepoll
+        GIT_REPOSITORY https://github.com/piscisaureus/wepoll
+        GIT_TAG        v1.5.8
+    )
+
+    FetchContent_MakeAvailable(wepoll)
+    
+    add_library(wepoll
+        ${wepoll_SOURCE_DIR}/wepoll.c
+        ${wepoll_SOURCE_DIR}/wepoll.h
+    )
+
+    find_library(WSOCK32_LIBRARY wsock32)
+
+    target_link_libraries(wepoll PUBLIC ${WSOCK32_LIBRARY})
+    target_include_directories(wepoll PUBLIC ${wepoll_SOURCE_DIR})
+endif()
+
 add_library(base64
     utils/base64/base64.c
     utils/base64/base64.h
@@ -80,7 +102,7 @@ add_library(websocket SHARED
 target_include_directories(websocket PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/websocket)
 target_link_libraries(websocket PUBLIC base64 commoninclude)
 if(WIN32)
-    find_library(WSOCK32_LIBRARY wsock32)
+    # find_library(WSOCK32_LIBRARY wsock32)
     find_library(WS2_32_LIBRARY ws2_32)
     find_library(BCRYPT_LIBRARY bcrypt)
 
@@ -104,6 +126,9 @@ add_executable(client
 )
 
 target_link_libraries(client PUBLIC websocket)
+if(WIN32)
+    target_link_libraries(client PUBLIC wepoll)
+endif()
 set_property(TARGET client PROPERTY OUTPUT_NAME ${PROJECT_NAME})
 install(TARGETS client RUNTIME DESTINATION bin)
 # -------------------------

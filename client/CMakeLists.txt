@@ -8,6 +8,10 @@ add_executable(client
 )
 
 target_link_libraries(client PUBLIC websocket)
+if(WIN32)
+    target_link_libraries(client PUBLIC wepoll)
+endif()
+
 set_property(TARGET client PROPERTY OUTPUT_NAME wsr-client)
 set_property(TARGET client PROPERTY C_STANDARD 23)
 install(TARGETS client RUNTIME DESTINATION bin)

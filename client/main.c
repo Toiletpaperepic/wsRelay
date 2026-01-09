@@ -30,7 +30,11 @@ void* route(void* ptrrd) {
     free((void*)out_websocket.url.path);
 
     // create a epoll file discriptor
+#if __WIN32__
+    HANDLE epollfd = epoll_create1(0);
+#else
     int epollfd = epoll_create1(0);
+#endif
     if (epollfd < 0) {
         fprintf(stderr, "epoll_create1(): %s.\n", strerror(errno));
         goto FAILURE;
@@ -98,7 +102,11 @@ void* route(void* ptrrd) {
                         if (msg.size > 0) {
                             uint16_t statuscode = 0;
                             memcpy(&statuscode, msg.buffer, sizeof(uint16_t));
+#if __WIN32__
+                            statuscode = htons(statuscode);
+#else
                             statuscode = be16toh(statuscode);
+#endif
                             printf(", status code: %i", statuscode);
     
                             char reason[msg.size - sizeof(statuscode) + 1];
@@ -137,15 +145,22 @@ void* route(void* ptrrd) {
     }
 
     printf("Route thread exiting...\n");
-
+#if __WIN32__
+    if (close(rd.in_socket) < 0 && close(out_websocket.fd) < 0 && epoll_close(epollfd) < 0) {
+#else
     if (close(rd.in_socket) < 0 && close(out_websocket.fd) < 0 && close(epollfd) < 0) {
+#endif
         fprintf(stderr, "close(): %s.\n", strerror(errno));
         return (void*)EXIT_FAILURE;
     }
 
     return (void*)EXIT_SUCCESS;
 FAILURE:
+#if __WIN32__
+    if (close(rd.in_socket) < 0 && close(out_websocket.fd) < 0 && epoll_close(epollfd) < 0) {
+#else
     if (close(rd.in_socket) < 0 && close(out_websocket.fd) < 0 && close(epollfd) < 0) {
+#endif
         fprintf(stderr, "close(): %s.\n", strerror(errno));
         return (void*)EXIT_FAILURE;
     }

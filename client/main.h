@@ -1,6 +1,7 @@
 #if __WIN32__
 #include <winsock2.h>
 #include <windows.h>
+#include <wepoll.h>
 #else
 #include <sys/socket.h>
 #include <sys/epoll.h>

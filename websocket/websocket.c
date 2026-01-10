@@ -149,7 +149,7 @@ int websocket_send(int fd, void* buffer, uint64_t size, enum opcodes opcode, boo
         exit(EXIT_FAILURE);
     }
     
-    error = BCryptGenRandom(&handle, (unsigned char*)maskingkey, sizeof(maskingkey), 0);
+    error = BCryptGenRandom(handle, (unsigned char*)maskingkey, sizeof(maskingkey), 0);
     if (!BCRYPT_SUCCESS(error)) {
         fprintf(stderr, "BCryptGenRandom(): %lX.\n", error);
         exit(EXIT_FAILURE);

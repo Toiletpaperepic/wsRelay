@@ -278,6 +278,7 @@ int main(int argc, char *argv[]) {
     
     printf("Starting local connection...\n");
 
+
 #if !__WIN32__
     struct sigaction a;
     a.sa_handler = catch_function;
@@ -288,6 +289,27 @@ int main(int argc, char *argv[]) {
         free((void*)purl.address);
         free((void*)purl.path);
         return EXIT_FAILURE;
+    }
+#endif
+
+#if __WIN32__
+    WSADATA wsaData;
+    int err;
+
+    // begin loading Ws2_32.dll
+    err = WSAStartup(MAKEWORD(2, 2), &wsaData);
+    if (err != 0) {
+        printf("WSAStartup failed with error: %d\n", err);
+        return EXIT_FAILURE;
+    }
+
+    //verify that we have the correct version
+    if (LOBYTE(wsaData.wVersion) != 2 || HIBYTE(wsaData.wVersion) != 2) {
+        fprintf(stderr, "Could not find a usable version of Winsock.dll...\n");
+        WSACleanup();
+        return 1;
+    } else {
+        printf("Valid Winsock dll (v2.2) was found!\n");
     }
 #endif
 
@@ -356,6 +378,10 @@ int main(int argc, char *argv[]) {
         fprintf(stderr, "close(): %s.\n", strerror(errno));
         return_error = EXIT_FAILURE;
     }
+
+#if __WIN32__
+    WSACleanup();
+#endif
 
     return return_error != 0 ? EXIT_SUCCESS : return_error;
 }

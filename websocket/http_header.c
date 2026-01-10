@@ -53,7 +53,7 @@ void make_http_header(struct parsed_url purl, char* message) {
         exit(EXIT_FAILURE);
     }
     
-    error = BCryptGenRandom(&handle, (unsigned char*)nonce, sizeof(nonce), 0);
+    error = BCryptGenRandom(handle, (PUCHAR)nonce, sizeof(nonce), 0);
     if (!BCRYPT_SUCCESS(error)) {
         fprintf(stderr, "BCryptGenRandom(): %lX.\n", error);
         exit(EXIT_FAILURE);

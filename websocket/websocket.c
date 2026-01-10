@@ -127,7 +127,7 @@ void websocket_send(struct connection con, void* buffer, uint64_t size, enum opc
         exit(EXIT_FAILURE);
     }
     
-    error = BCryptGenRandom(&handle, (unsigned char*)maskingkey, sizeof(maskingkey), 0);
+    error = BCryptGenRandom(handle, (unsigned char*)maskingkey, sizeof(maskingkey), 0);
     if (!BCRYPT_SUCCESS(error)) {
         fprintf(stderr, "BCryptGenRandom(): %lX.\n", error);
         exit(EXIT_FAILURE);

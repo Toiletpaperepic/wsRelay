@@ -1,4 +1,5 @@
 #include "main.h"
+#include <stdio.h>
 
 volatile sig_atomic_t status = 0;
 
@@ -179,6 +180,24 @@ int main(int argc, char *argv[]) {
     printf("Starting local connection...\n");
 
 #if __WIN32__
+    WSADATA wsaData;
+    int err;
+
+    // begin loading Ws2_32.dll
+    err = WSAStartup(MAKEWORD(2, 2), &wsaData);
+    if (err != 0) {
+        printf("WSAStartup failed with error: %d\n", err);
+        return EXIT_FAILURE;
+    }
+
+    //verify that we have the correct version
+    if (LOBYTE(wsaData.wVersion) != 2 || HIBYTE(wsaData.wVersion) != 2) {
+        fprintf(stderr, "Could not find a usable version of Winsock.dll...\n");
+        WSACleanup();
+        return 1;
+    } else {
+        printf("Valid Winsock dll (v2.2) was found!\n");
+    }
 #else
     struct sigaction a;
     a.sa_handler = catch_function;
@@ -243,6 +262,10 @@ int main(int argc, char *argv[]) {
         fprintf(stderr, "close(): %s.\n", strerror(errno));
         return EXIT_FAILURE;
     }
+
+#if __WIN32__
+    WSACleanup();
+#endif
 
     struct Argument* nextarg = &arg0;
     while (true) {

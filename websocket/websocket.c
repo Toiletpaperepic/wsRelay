@@ -190,7 +190,7 @@ struct message websocket_recv(struct connection con) {
         }
 
         FIN = (header[0] & 0b10000000) != 0;
-        printf("FIN: %i\n", FIN);
+        printf("FIN: %s\n", FIN ? "True" : "False");
 
         assert((header[0] & 0b01110000) == 0); // fixme: we should really disconect instead of crashing the program.
 

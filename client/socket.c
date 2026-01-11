@@ -15,7 +15,7 @@ int socket_bind(uint32_t addr, uint16_t port) {
         return -1;
     }
     
-#if NDEBUG && !__WIN32__ 
+#if __Debug__ && !__WIN32__
     if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, (void*)true, sizeof(int)) < 0) {
         fprintf(stderr, "setsockopt(): %s.\n", strerror(errno));
         return -1;

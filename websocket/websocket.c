@@ -1,5 +1,6 @@
 #include <sys/random.h>
 #include <arpa/inet.h>
+#include <endian.h>
 #include <stdint.h>
 #include <string.h>
 #include <stdlib.h>
@@ -7,7 +8,7 @@
 #include <errno.h>
 #include <stdio.h>
 #include "websocket.h"
-#include "https_headers.h"
+#include "http_header.h"
 
 // https://en.wikipedia.org/wiki/WebSocket#Protocol
 
@@ -27,16 +28,14 @@ struct connection websocket_connect(struct parsed_url purl) {
         exit(EXIT_FAILURE);
     }
     con.fd = fd;
-    
-    struct in_addr addr;
-    if (inet_aton(con.url.address, &addr) < 0) {
-        fprintf(stderr, "inet_aton(): failed, Invalid address.\n");
-    }
-    
+
     struct sockaddr_in serverAddress;
     serverAddress.sin_family = AF_INET;
     serverAddress.sin_port = htons(con.url.port);
-    serverAddress.sin_addr.s_addr = addr.s_addr;
+
+    if (inet_pton(AF_INET, con.url.address, &serverAddress.sin_addr) < 0) {
+        fprintf(stderr, "inet_aton(): failed, Invalid address.\n");
+    }
     
     if (connect(fd, (struct sockaddr*)&serverAddress, sizeof(serverAddress)) < 0) {
         fprintf(stderr, "connect(): %s.\n", strerror(errno));
@@ -67,8 +66,7 @@ struct connection websocket_connect(struct parsed_url purl) {
 }
 
 void websocket_send(struct connection con, void* buffer, uint64_t size, enum opcodes opcode, bool FIN) {
-    uint8_t byte0 = 0;
-    uint8_t byte1 = 0;
+    uint8_t byte0 = 0, byte1 = 0;
 
     if(FIN == true) {
         byte0 = byte0 | 0b10000000;
@@ -138,23 +136,27 @@ void websocket_send(struct connection con, void* buffer, uint64_t size, enum opc
     }
 
     memcpy(payload + 2 + extraPayloadlength, maskingkey, sizeof(maskingkey));
-    memcpy(payload + 2 + extraPayloadlength + sizeof(maskingkey), buffer, size);
 
-    printf("payload: ");
-    for (int i = 0; i < size; i++) {
-        printf("%X ", payload[2 + extraPayloadlength + sizeof(maskingkey) + i]);
+    if (buffer == NULL && size == 0) {
+        printf("no payload provided.\n");
+    } else {
+        memcpy(payload + 2 + extraPayloadlength + sizeof(maskingkey), buffer, size);
+
+        printf("payload: ");
+        for (int i = 0; i < size; i++) {
+            printf("%X ", payload[2 + extraPayloadlength + sizeof(maskingkey) + i]);
+        }
+        printf("\n");
+        
+        printf("payload (size): %lu\n", sizeof(payload));
+
+        printf("payload (masked): ");
+        for (int i = 0; i < size; i++) {
+            payload[2 + extraPayloadlength + sizeof(maskingkey) + i] = payload[2 + extraPayloadlength + sizeof(maskingkey) + i] ^ maskingkey[i % 4];
+            printf("%X ", payload[2 + extraPayloadlength + sizeof(maskingkey) + i]);
+        }
+        printf("\n");
     }
-    printf("\n");
-    
-    printf("payload (size): %lu\n", sizeof(payload));
-
-    printf("payload (masked): ");
-    for (int i = 0; i < size; i++) {
-        payload[2 + extraPayloadlength + sizeof(maskingkey) + i] = payload[2 + extraPayloadlength + sizeof(maskingkey) + i] ^ maskingkey[i % 4];
-        printf("%X ", payload[2 + extraPayloadlength + sizeof(maskingkey) + i]);
-    }
-    printf("\n");
-
 
     if (send(con.fd, payload, sizeof(payload), 0) < 0) {
         fprintf(stderr, "send(): %s.\n", strerror(errno));
@@ -162,17 +164,16 @@ void websocket_send(struct connection con, void* buffer, uint64_t size, enum opc
     }
 }
 
-void resizebuffer(void* old_buffer, size_t newsize) {
-    void* new_buffer = realloc(old_buffer, newsize);
-    if (new_buffer == NULL) {
-        fprintf(stderr, "realloc(): %s.\n", strerror(errno));
-        free(old_buffer);
-        exit(EXIT_FAILURE);
-    } else if (old_buffer != new_buffer) {
-        old_buffer = new_buffer;
-    }
-    new_buffer = NULL;
-}
+#define resizebuffer(old_buffer, newsize)                                                     \
+    void* new_buffer = realloc(old_buffer, newsize);                                          \
+    if (new_buffer == NULL) {                                                                 \
+        fprintf(stderr, "realloc(): Unknown reason.\n");                                      \
+        free(old_buffer);                                                                     \
+        exit(EXIT_FAILURE);                                                                   \
+    } else if (old_buffer != new_buffer) {                                                    \
+        old_buffer = new_buffer;                                                              \
+    }                                                                                         \
+    new_buffer = NULL;                                                                        \
 
 struct message websocket_recv(struct connection con) {
     bool FIN = false;
@@ -183,15 +184,15 @@ struct message websocket_recv(struct connection con) {
     
     while (FIN != true) {
         uint8_t header[2] = {};
-        if (recv(con.fd, header, sizeof(header), 0) < 0) {
+        if (recv(con.fd, header, sizeof(header), MSG_WAITALL) < 0) {
             fprintf(stderr, "recv(): %s.\n", strerror(errno));
             exit(EXIT_FAILURE);
         }
 
         FIN = (header[0] & 0b10000000) != 0;
-        printf("FIN: %i\n", FIN);
+        printf("FIN: %s\n", FIN ? "True" : "False");
 
-        assert((header[0] & 0b01110000) == 0); // we should really disconect instead of crashing the program.
+        assert((header[0] & 0b01110000) == 0); // fixme: we should really disconect instead of crashing the program.
 
         enum opcodes opcode = header[0] & 0b00001111;
         printf("opcode: %i\n", opcode);
@@ -227,7 +228,7 @@ struct message websocket_recv(struct connection con) {
                 resizebuffer(msg.buffer, msg.size + payload_size);
             }
             
-            if (recv(con.fd, msg.buffer + msg.size, payload_size, 0) < 0) {
+            if (recv(con.fd, msg.buffer + msg.size, payload_size, MSG_WAITALL) < 0) {
                 fprintf(stderr, "recv(): %s.\n", strerror(errno));
                 free(msg.buffer);
                 exit(EXIT_FAILURE);

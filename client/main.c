@@ -132,7 +132,7 @@ void* route(void* ptrrd) {
 
                     free(msg.buffer);
                 }
-            }ws://127.0.0.1:8000/connect
+            }
         }
     }
 

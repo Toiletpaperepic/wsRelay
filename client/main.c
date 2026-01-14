@@ -180,14 +180,13 @@ int main(int argc, char *argv[]) {
     
     if (listen(socket, 0) < 0) {
         fprintf(stderr, "listen(): %s.\n", strerror(errno));
-        return EXIT_FAILURE
+        return EXIT_FAILURE;
     }
 
     int return_error = 0;
 
     // keep constantly looking for a new connection. when we do, pass it along to a another thread to handle it.
     while (status != SIGINT) {
-        
         struct pollfd fd;
         
         fd.fd = socket;
@@ -196,7 +195,8 @@ int main(int argc, char *argv[]) {
         int ret = poll(&fd, 1, 1000 * 5);
         if (ret < 0) {
             fprintf(stderr, "poll(): %s.\n", strerror(errno));
-            return 1;
+            return_error = EXIT_FAILURE;
+            break;
 	    }
 
         if (fd.revents & POLLIN) {

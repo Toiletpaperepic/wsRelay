@@ -12,8 +12,10 @@ static void catch_function(int signo) {
 #define ROUTE_WEBSOCKET 1
 
 struct routedata {
-    const char* out_url;
+    struct parsed_url out_url;
     int in_socket;
+    pthread_t thread;
+    bool done;
 };
 
 void* route(void* ptrrd) {
@@ -25,7 +27,7 @@ void* route(void* ptrrd) {
 
     // start a new websocket connection
     printf("Starting websocket connection...\n");
-    struct connection out_websocket = websocket_connect(parse_url(rd.out_url));
+    struct connection out_websocket = websocket_connect(rd.out_url);
     // printf("started a new connection route to %s:%i/%s\n", out_websocket.url.address, out_websocket.url.port, out_websocket.url.path);
     free((void*)out_websocket.url.address);
     free((void*)out_websocket.url.path);
@@ -164,8 +166,8 @@ int main(int argc, char *argv[]) {
 
     printf("Starting local connection...\n");
 
-    unsigned int threads_total = 1;
-    pthread_t** threads = malloc(threads_total * sizeof(*threads));
+    unsigned int threadroutes_total = 1;
+    struct routedata** threadroutes = malloc(threadroutes_total * sizeof(*threadroutes));
     
     int socket = socket_bind(INADDR_ANY, arg1.value == NULL ? 48375 : *(int*)arg1.value);
     if (socket < 0) {
@@ -200,40 +202,40 @@ int main(int argc, char *argv[]) {
 	    }
 
         if (fd.revents & POLLIN) {
-            struct routedata rd;
-            rd.out_url = (char*)arg0.value;
-            rd.in_socket = accept(socket, NULL, NULL);
-            if (rd.in_socket < 0) {
+            threadroutes[threadroutes_total - 1] = malloc(sizeof(struct routedata*));
+
+            threadroutes[threadroutes_total - 1]->out_url = parse_url(arg0.value);
+            threadroutes[threadroutes_total - 1]->in_socket = accept(socket, NULL, NULL);
+            if (threadroutes[threadroutes_total - 1]->in_socket < 0) {
                 fprintf(stderr, "failed to accept a new connection. %s.\n", strerror(errno));
                 return_error = EXIT_FAILURE;
                 break;
             }
     
-            threads[threads_total - 1] = malloc(sizeof(pthread_t*));
-            pthread_create(threads[threads_total - 1], NULL, &route, (void*)&rd);
+            pthread_create(&threadroutes[threadroutes_total - 1]->thread, NULL, &route, (void*)threadroutes[threadroutes_total - 1]);
             
-            threads_total++;
-            pthread_t** tmp = realloc(threads, threads_total * sizeof(*threads));
+            threadroutes_total++;
+            struct routedata** tmp = realloc(threadroutes, threadroutes_total * sizeof(*threadroutes));
             if (tmp == NULL) {
                 fprintf(stderr, "realloc(): Unknown reason.\n");
-                free(threads);
+                free(threadroutes);
                 return_error = EXIT_FAILURE;
                 break;
             }
-            threads = tmp;
+            threadroutes = tmp;
         } else {
             printf("nope...\n");
         }
     }
 
-    for (int i = 0; i < threads_total - 1; i++) {
+    for (int i = 0; i < threadroutes_total - 1; i++) {
         int return_val;
-        pthread_join(*threads[i], (void*)&return_val);
-        free(threads[i]);
+        pthread_join(threadroutes[i]->thread, (void*)&return_val);
+        free(threadroutes[i]);
         printf("Thread[%i] exited with exitcode %i\n", i, return_val);
     }
     
-    free(threads);
+    free(threadroutes);
     
     if (close(socket) < 0) {
         fprintf(stderr, "close(): %s.\n", strerror(errno));

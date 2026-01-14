@@ -1,4 +1,5 @@
 #include "main.h"
+#include <stdio.h>
 #include <stdlib.h>
 
 volatile sig_atomic_t status = 0;
@@ -12,7 +13,7 @@ static void catch_function(int signo) {
 #define ROUTE_WEBSOCKET 1
 
 struct routedata {
-    struct parsed_url out_url;
+    struct parsed_url* out_url;
     int in_socket;
     pthread_t thread;
     bool done;
@@ -27,10 +28,7 @@ void* route(void* ptrrd) {
 
     // start a new websocket connection
     printf("Starting websocket connection...\n");
-    struct connection out_websocket = websocket_connect(rd.out_url);
-    // printf("started a new connection route to %s:%i/%s\n", out_websocket.url.address, out_websocket.url.port, out_websocket.url.path);
-    free((void*)out_websocket.url.address);
-    free((void*)out_websocket.url.path);
+    int out_websocket_fd = websocket_connect(*rd.out_url);
 
     // create a epoll file discriptor
     int epollfd = epoll_create1(0);
@@ -51,7 +49,7 @@ void* route(void* ptrrd) {
     struct epoll_event epolleventwebsocket;
     epolleventwebsocket.data.u32 = ROUTE_WEBSOCKET;
     epolleventwebsocket.events = EPOLLIN;
-    if (epoll_ctl(epollfd, EPOLL_CTL_ADD, out_websocket.fd, &epolleventwebsocket) < 0) {
+    if (epoll_ctl(epollfd, EPOLL_CTL_ADD, out_websocket_fd, &epolleventwebsocket) < 0) {
         fprintf(stderr, "epoll_ctl(): %s.\n", strerror(errno));
         goto FAILURE;
     }
@@ -84,15 +82,15 @@ void* route(void* ptrrd) {
                     } else if (bytesrecv == 0) {
                         printf("inbound disconnected.\n");
 
-                        websocket_send(out_websocket, NULL, 0, CLOSE, true);
+                        websocket_send(out_websocket_fd, NULL, 0, CLOSE, true);
 
                         loop = !loop;
                         break;
                     }
                     
-                    websocket_send(out_websocket, buffer, bytesrecv, BINARY, true);
+                    websocket_send(out_websocket_fd, buffer, bytesrecv, BINARY, true);
                 } else if (epe[i].data.u32 == ROUTE_WEBSOCKET) {
-                    struct message msg = websocket_recv(out_websocket);
+                    struct message msg = websocket_recv(out_websocket_fd);
                     assert(msg.opcode != CONTINUATION); // should've already been handled.
                     
                     if (msg.opcode == CLOSE) {
@@ -114,7 +112,7 @@ void* route(void* ptrrd) {
                             printf(", No close frame provided.\n");
                         }
 
-                        websocket_send(out_websocket, NULL, 0, CLOSE, true);
+                        websocket_send(out_websocket_fd, NULL, 0, CLOSE, true);
 
                         loop = !loop;
                         free(msg.buffer);
@@ -122,7 +120,7 @@ void* route(void* ptrrd) {
                     } else if (msg.opcode == TEXT) {
                         printf("Unsupported opcode.\n");
                     } else if (msg.opcode == PING) {
-                        websocket_send(out_websocket, NULL, 0, PONG, true);
+                        websocket_send(out_websocket_fd, NULL, 0, PONG, true);
                     } else if (msg.opcode == PONG) {
                         // ...
                     } else if (msg.opcode == BINARY) {
@@ -141,14 +139,14 @@ void* route(void* ptrrd) {
 
     printf("Route thread exiting...\n");
 
-    if (close(rd.in_socket) < 0 && close(out_websocket.fd) < 0 && close(epollfd) < 0) {
+    if (close(rd.in_socket) < 0 && close(out_websocket_fd) < 0 && close(epollfd) < 0) {
         fprintf(stderr, "close(): %s.\n", strerror(errno));
         return (void*)EXIT_FAILURE;
     }
 
     return (void*)EXIT_SUCCESS;
 FAILURE:
-    if (close(rd.in_socket) < 0 && close(out_websocket.fd) < 0 && close(epollfd) < 0) {
+    if (close(rd.in_socket) < 0 && close(out_websocket_fd) < 0 && close(epollfd) < 0) {
         fprintf(stderr, "close(): %s.\n", strerror(errno));
         return (void*)EXIT_FAILURE;
     }
@@ -159,11 +157,14 @@ FAILURE:
 int main(int argc, char *argv[]) {
     register_argument(arg0, NULL, "out-url", IS_STRING, true);
     register_argument(arg1, &arg0, "port", IS_UNSIGNED_INT, false);
-
+    
     if (parse_args(argc, argv, &arg1)) {
         return EXIT_FAILURE;
     }
-
+    struct parsed_url purl = parse_url(arg0.value);
+    if (purl.protocol == unknown)
+        fprintf(stderr, "Unknown protocol.\n");
+    
     printf("Starting local connection...\n");
 
     unsigned int threadroutes_total = 1;
@@ -203,8 +204,7 @@ int main(int argc, char *argv[]) {
 
         if (fd.revents & POLLIN) {
             threadroutes[threadroutes_total - 1] = malloc(sizeof(struct routedata*));
-
-            threadroutes[threadroutes_total - 1]->out_url = parse_url(arg0.value);
+            threadroutes[threadroutes_total - 1]->out_url = &purl;
             threadroutes[threadroutes_total - 1]->in_socket = accept(socket, NULL, NULL);
             if (threadroutes[threadroutes_total - 1]->in_socket < 0) {
                 fprintf(stderr, "failed to accept a new connection. %s.\n", strerror(errno));
@@ -236,6 +236,8 @@ int main(int argc, char *argv[]) {
     }
     
     free(threadroutes);
+    free((void*)purl.address);
+    free((void*)purl.path);
     
     if (close(socket) < 0) {
         fprintf(stderr, "close(): %s.\n", strerror(errno));

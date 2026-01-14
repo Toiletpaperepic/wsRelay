@@ -3,17 +3,12 @@
 #include <stddef.h>
 #include <stdint.h>
 
-struct connection {
-    struct parsed_url url;
-    int fd;
-};
-
 struct message {
     uint64_t size;
     enum opcodes opcode;
     void* buffer;
 };
 
-void websocket_send(struct connection con, void* buffer, uint64_t size, enum opcodes opcode, bool FIN);
-struct message websocket_recv(struct connection con);
-struct connection websocket_connect(struct parsed_url purl);
+void websocket_send(int fd, void* buffer, uint64_t size, enum opcodes opcode, bool FIN);
+struct message websocket_recv(int fd);
+int websocket_connect(struct parsed_url purl);

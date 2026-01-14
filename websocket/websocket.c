@@ -18,22 +18,18 @@
 #define getrandom(buf,buflen,flags) syscall(SYS_getrandom,buf,buflen,flags)
 #endif
 
-struct connection websocket_connect(struct parsed_url purl) {
-    struct connection con;
-    con.url = purl;
-    
+int websocket_connect(struct parsed_url purl) {
     int fd = socket(AF_INET, SOCK_STREAM, 0);
     if (fd < 0) {
         fprintf(stderr, "socket(): %s.\n", strerror(errno));
         exit(EXIT_FAILURE);
     }
-    con.fd = fd;
 
     struct sockaddr_in serverAddress;
     serverAddress.sin_family = AF_INET;
-    serverAddress.sin_port = htons(con.url.port);
+    serverAddress.sin_port = htons(purl.port);
 
-    if (inet_pton(AF_INET, con.url.address, &serverAddress.sin_addr) < 0) {
+    if (inet_pton(AF_INET, purl.address, &serverAddress.sin_addr) < 0) {
         fprintf(stderr, "inet_aton(): failed, Invalid address.\n");
     }
     
@@ -44,16 +40,16 @@ struct connection websocket_connect(struct parsed_url purl) {
 
     // tell the server to upgrade the connection 
     char message[1024] = ""; 
-    make_http_header(con.url, message);
+    make_http_header(purl, message);
     printf("Sending message: %s\n", message);
 
-    if (send(con.fd, message, strlen(message), 0) < 0) {
+    if (send(fd, message, strlen(message), 0) < 0) {
         fprintf(stderr, "send(): %s.\n", strerror(errno));
         exit(EXIT_FAILURE);
     }
 
     char buffer[1024] = {};
-    if (recv(con.fd, buffer, sizeof(buffer), 0) < 0) {
+    if (recv(fd, buffer, sizeof(buffer), 0) < 0) {
         fprintf(stderr, "recv(): %s.\n", strerror(errno));
         exit(EXIT_FAILURE);
     }
@@ -62,10 +58,10 @@ struct connection websocket_connect(struct parsed_url purl) {
 
     //TODO: check for a valid response?
 
-    return con;
+    return fd;
 }
 
-void websocket_send(struct connection con, void* buffer, uint64_t size, enum opcodes opcode, bool FIN) {
+void websocket_send(int fd, void* buffer, uint64_t size, enum opcodes opcode, bool FIN) {
     uint8_t byte0 = 0, byte1 = 0;
 
     if(FIN == true) {
@@ -158,7 +154,7 @@ void websocket_send(struct connection con, void* buffer, uint64_t size, enum opc
         printf("\n");
     }
 
-    if (send(con.fd, payload, sizeof(payload), 0) < 0) {
+    if (send(fd, payload, sizeof(payload), 0) < 0) {
         fprintf(stderr, "send(): %s.\n", strerror(errno));
         exit(EXIT_FAILURE);
     }
@@ -175,7 +171,7 @@ void websocket_send(struct connection con, void* buffer, uint64_t size, enum opc
     }                                                                                         \
     new_buffer = NULL;                                                                        \
 
-struct message websocket_recv(struct connection con) {
+struct message websocket_recv(int fd) {
     bool FIN = false;
 
     struct message msg;
@@ -184,7 +180,7 @@ struct message websocket_recv(struct connection con) {
     
     while (FIN != true) {
         uint8_t header[2] = {};
-        if (recv(con.fd, header, sizeof(header), MSG_WAITALL) < 0) {
+        if (recv(fd, header, sizeof(header), MSG_WAITALL) < 0) {
             fprintf(stderr, "recv(): %s.\n", strerror(errno));
             exit(EXIT_FAILURE);
         }
@@ -204,14 +200,14 @@ struct message websocket_recv(struct connection con) {
         uint64_t payload_size = header[1] & 0b01111111;
 
         if (payload_size == 126) {
-            if (recv(con.fd, &payload_size, sizeof(uint16_t), 0) < 0) {
+            if (recv(fd, &payload_size, sizeof(uint16_t), 0) < 0) {
                 fprintf(stderr, "recv(): %s.\n", strerror(errno));
                 exit(EXIT_FAILURE);
             }
             payload_size = be16toh(payload_size);
         }
         else if (payload_size == 127) {
-            if (recv(con.fd, &payload_size, sizeof(uint64_t), 0) < 0) {
+            if (recv(fd, &payload_size, sizeof(uint64_t), 0) < 0) {
                 fprintf(stderr, "recv(): %s.\n", strerror(errno));
                 exit(EXIT_FAILURE);
             }
@@ -228,7 +224,7 @@ struct message websocket_recv(struct connection con) {
                 resizebuffer(msg.buffer, msg.size + payload_size);
             }
             
-            if (recv(con.fd, msg.buffer + msg.size, payload_size, MSG_WAITALL) < 0) {
+            if (recv(fd, msg.buffer + msg.size, payload_size, MSG_WAITALL) < 0) {
                 fprintf(stderr, "recv(): %s.\n", strerror(errno));
                 free(msg.buffer);
                 exit(EXIT_FAILURE);

@@ -1,5 +1,6 @@
 #include <sys/socket.h>
 #include <sys/epoll.h>
+#include <sys/poll.h>
 #include <pthread.h>
 #include <string.h>
 #include <unistd.h>
@@ -9,6 +10,7 @@
 #include <signal.h>
 #include <errno.h>
 #include <stdio.h>
+#include <fcntl.h>
 #include "websocket.h"
 #include "socket.h"
 #include "args.h"

@@ -1,4 +1,5 @@
 #include "main.h"
+#include <stdlib.h>
 
 volatile sig_atomic_t status = 0;
 
@@ -54,11 +55,11 @@ void* route(void* ptrrd) {
     }
 
     bool loop = true;
-    while (loop) {
-        struct epoll_event epe[2];
+    while (status != SIGINT && loop) {
+        struct epoll_event epe[10];
         
         printf("waiting for packets...\n");
-        int fdevents = epoll_wait(epollfd, epe, sizeof(epe) / sizeof(struct epoll_event), -1);
+        int fdevents = epoll_wait(epollfd, epe, sizeof(epe) / sizeof(struct epoll_event), 1000 * 5);
 
         if (fdevents < 0)  {
             fprintf(stderr, "epoll_wait(): %s.\n", strerror(errno));
@@ -163,53 +164,66 @@ int main(int argc, char *argv[]) {
 
     printf("Starting local connection...\n");
 
-    struct sigaction a;
-    a.sa_handler = catch_function;
-    a.sa_flags = 0;
-    sigemptyset( &a.sa_mask );
-    
-    if (sigaction(SIGINT, &a, NULL) < 0) { // https://stackoverflow.com/questions/15617562/sigintctrlc-doesnt-interrupt-accept-call
-        fprintf(stderr, "An error occurred while setting up a signal handler.\n");
-        return EXIT_FAILURE;
-    }
-    
     unsigned int threads_total = 1;
     pthread_t** threads = malloc(threads_total * sizeof(*threads));
-
+    
     int socket = socket_bind(INADDR_ANY, arg1.value == NULL ? 48375 : *(int*)arg1.value);
     if (socket < 0) {
-        fprintf(stderr, "socket failed to bind.\n");
+        fprintf(stderr, "socket failed to bind! exiting...\n");
         return EXIT_FAILURE;
     }
+    
+    if (signal(SIGINT, catch_function) < 0) {
+        fprintf(stderr, "An error occurred while setting up a signal handler! %s.\n", strerror(errno));
+        return EXIT_FAILURE;
+    }
+    
+    if (listen(socket, 0) < 0) {
+        fprintf(stderr, "listen(): %s.\n", strerror(errno));
+        return EXIT_FAILURE
+    }
+
+    int return_error = 0;
 
     // keep constantly looking for a new connection. when we do, pass it along to a another thread to handle it.
     while (status != SIGINT) {
-        if (socket_listen(socket) == EXIT_FAILURE) {
-            fprintf(stderr, "failed to listen to socket.\n");
-            break;
-        }
         
-        struct routedata rd;
-        rd.in_socket = socket_accept(socket);
-        if (rd.in_socket < 0) {
-            if (status != SIGINT) {
-                fprintf(stderr, "failed to accept a new connection.\n");
-            }
-            break;
-        }
-        rd.out_url = (char*)arg0.value;
+        struct pollfd fd;
+        
+        fd.fd = socket;
+        fd.events = POLLIN;
 
-        threads[threads_total - 1] = malloc(sizeof(pthread_t*));
-        pthread_create(threads[threads_total - 1], NULL, &route, (void*)&rd);
-        
-        threads_total++;
-        pthread_t** tmp = realloc(threads, threads_total * sizeof(*threads));
-        if (tmp == NULL) {
-            fprintf(stderr, "realloc(): Unknown reason.\n");
-            free(threads);
-            return EXIT_FAILURE;
+        int ret = poll(&fd, 1, 1000 * 5);
+        if (ret < 0) {
+            fprintf(stderr, "poll(): %s.\n", strerror(errno));
+            return 1;
+	    }
+
+        if (fd.revents & POLLIN) {
+            struct routedata rd;
+            rd.out_url = (char*)arg0.value;
+            rd.in_socket = accept(socket, NULL, NULL);
+            if (rd.in_socket < 0) {
+                fprintf(stderr, "failed to accept a new connection. %s.\n", strerror(errno));
+                return_error = EXIT_FAILURE;
+                break;
+            }
+    
+            threads[threads_total - 1] = malloc(sizeof(pthread_t*));
+            pthread_create(threads[threads_total - 1], NULL, &route, (void*)&rd);
+            
+            threads_total++;
+            pthread_t** tmp = realloc(threads, threads_total * sizeof(*threads));
+            if (tmp == NULL) {
+                fprintf(stderr, "realloc(): Unknown reason.\n");
+                free(threads);
+                return_error = EXIT_FAILURE;
+                break;
+            }
+            threads = tmp;
+        } else {
+            printf("nope...\n");
         }
-        threads = tmp;
     }
 
     for (int i = 0; i < threads_total - 1; i++) {
@@ -222,25 +236,22 @@ int main(int argc, char *argv[]) {
     free(threads);
     
     if (close(socket) < 0) {
-            fprintf(stderr, "close(): %s.\n", strerror(errno));
-            return EXIT_FAILURE;
+        fprintf(stderr, "close(): %s.\n", strerror(errno));
+        return EXIT_FAILURE;
     }
 
     struct Argument* nextarg = &arg0;
-        while (true) {
-            if (nextarg->value != NULL && nextarg->type != IS_BOOL) {
-                // printf("freed %s\n", nextarg->name);
-                free(nextarg->value);
-            } else {
-                // printf("not freed %s\n", nextarg->name);
-            }
-        
-            if (nextarg->next == NULL) {
-                break;
-            } else {
-                nextarg = nextarg->next;
-            }
+    while (true) {
+        if (nextarg->value != NULL && nextarg->type != IS_BOOL) {
+            free(nextarg->value);
         }
+    
+        if (nextarg->next == NULL) {
+            break;
+        } else {
+            nextarg = nextarg->next;
+        }
+    }
 
-    return EXIT_SUCCESS;
+    return return_error != 0 ? EXIT_SUCCESS : return_error;
 }

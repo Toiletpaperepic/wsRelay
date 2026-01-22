@@ -47,8 +47,6 @@ void make_http_header(struct parsed_url purl, char* message) {
     strcat(message, "Sec-WebSocket-Key: ");
     strcat(message, key);
     strcat(message, "\n");
-    
-    free((void*)key);
 
     // Blank Line (end of request)
     strcat(message, "\n");

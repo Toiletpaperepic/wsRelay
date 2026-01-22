@@ -14,7 +14,8 @@ static void catch_function(int signo) {
 
 struct routedata {
     struct parsed_url* out_url;
-    int in_socket;
+    int in_socket_fd;
+    int out_websocket_fd;
     pthread_t thread;
     bool done;
 };
@@ -25,10 +26,6 @@ void* route(void* ptrrd) {
     // immediately copy route data, otherwise you'll get data races between main and this thread.
     struct routedata rd;
     memcpy(&rd, ptrrd, sizeof(struct routedata));
-
-    // start a new websocket connection
-    printf("Starting websocket connection...\n");
-    int out_websocket_fd = websocket_connect(*rd.out_url);
 
     // create a epoll file discriptor
     int epollfd = epoll_create1(0);
@@ -41,7 +38,7 @@ void* route(void* ptrrd) {
     struct epoll_event epolleventlocalsocket;
     epolleventlocalsocket.data.u32 = ROUTE_CLIENT_CONNECTION;
     epolleventlocalsocket.events = EPOLLIN;
-    if (epoll_ctl(epollfd, EPOLL_CTL_ADD, rd.in_socket, &epolleventlocalsocket) < 0) {
+    if (epoll_ctl(epollfd, EPOLL_CTL_ADD, rd.in_socket_fd, &epolleventlocalsocket) < 0) {
         fprintf(stderr, "epoll_ctl(): %s.\n", strerror(errno));
         goto FAILURE;
     }
@@ -49,7 +46,7 @@ void* route(void* ptrrd) {
     struct epoll_event epolleventwebsocket;
     epolleventwebsocket.data.u32 = ROUTE_WEBSOCKET;
     epolleventwebsocket.events = EPOLLIN;
-    if (epoll_ctl(epollfd, EPOLL_CTL_ADD, out_websocket_fd, &epolleventwebsocket) < 0) {
+    if (epoll_ctl(epollfd, EPOLL_CTL_ADD, rd.out_websocket_fd, &epolleventwebsocket) < 0) {
         fprintf(stderr, "epoll_ctl(): %s.\n", strerror(errno));
         goto FAILURE;
     }
@@ -70,7 +67,7 @@ void* route(void* ptrrd) {
             for (int i = 0; i < fdevents; i++) {
                 if (epe[i].data.u32 == ROUTE_CLIENT_CONNECTION) {
                     uint8_t buffer[1024] = {};
-                    int bytesrecv = recv(rd.in_socket, buffer, sizeof(buffer), 0);
+                    int bytesrecv = recv(rd.in_socket_fd, buffer, sizeof(buffer), 0);
 
                     if (bytesrecv < 0) {
                         // if (bytesrecv == ECONNRESET...) {
@@ -82,15 +79,15 @@ void* route(void* ptrrd) {
                     } else if (bytesrecv == 0) {
                         printf("inbound disconnected.\n");
 
-                        websocket_send(out_websocket_fd, NULL, 0, CLOSE, true);
+                        websocket_send(rd.out_websocket_fd, NULL, 0, CLOSE, true);
 
                         loop = !loop;
                         break;
                     }
                     
-                    websocket_send(out_websocket_fd, buffer, bytesrecv, BINARY, true);
+                    websocket_send(rd.out_websocket_fd, buffer, bytesrecv, BINARY, true);
                 } else if (epe[i].data.u32 == ROUTE_WEBSOCKET) {
-                    struct message msg = websocket_recv(out_websocket_fd);
+                    struct message msg = websocket_recv(rd.out_websocket_fd);
                     assert(msg.opcode != CONTINUATION); // should've already been handled.
                     
                     if (msg.opcode == CLOSE) {
@@ -112,7 +109,7 @@ void* route(void* ptrrd) {
                             printf(", No close frame provided.\n");
                         }
 
-                        websocket_send(out_websocket_fd, NULL, 0, CLOSE, true);
+                        websocket_send(rd.out_websocket_fd, NULL, 0, CLOSE, true);
 
                         loop = !loop;
                         free(msg.buffer);
@@ -120,11 +117,11 @@ void* route(void* ptrrd) {
                     } else if (msg.opcode == TEXT) {
                         printf("Unsupported opcode.\n");
                     } else if (msg.opcode == PING) {
-                        websocket_send(out_websocket_fd, NULL, 0, PONG, true);
+                        websocket_send(rd.out_websocket_fd, NULL, 0, PONG, true);
                     } else if (msg.opcode == PONG) {
                         // ...
                     } else if (msg.opcode == BINARY) {
-                        if (send(rd.in_socket, msg.buffer, msg.size, 0) < 0) {
+                        if (send(rd.in_socket_fd, msg.buffer, msg.size, 0) < 0) {
                             fprintf(stderr, "send(): %s.\n", strerror(errno));
                             free(msg.buffer);
                             goto FAILURE;
@@ -139,14 +136,14 @@ void* route(void* ptrrd) {
 
     printf("Route thread exiting...\n");
 
-    if (close(rd.in_socket) < 0 && close(out_websocket_fd) < 0 && close(epollfd) < 0) {
+    if (close(rd.in_socket_fd) < 0 && close(rd.out_websocket_fd) < 0 && close(epollfd) < 0) {
         fprintf(stderr, "close(): %s.\n", strerror(errno));
         return (void*)EXIT_FAILURE;
     }
 
     return (void*)EXIT_SUCCESS;
 FAILURE:
-    if (close(rd.in_socket) < 0 && close(out_websocket_fd) < 0 && close(epollfd) < 0) {
+    if (close(rd.in_socket_fd) < 0 && close(rd.out_websocket_fd) < 0 && close(epollfd) < 0) {
         fprintf(stderr, "close(): %s.\n", strerror(errno));
         return (void*)EXIT_FAILURE;
     }
@@ -207,8 +204,13 @@ int main(int argc, char *argv[]) {
         if (fd.revents & POLLIN) {
             threadroutes[threadroutes_total - 1] = malloc(sizeof(struct routedata*));
             threadroutes[threadroutes_total - 1]->out_url = &purl;
-            threadroutes[threadroutes_total - 1]->in_socket = accept(socket, NULL, NULL);
-            if (threadroutes[threadroutes_total - 1]->in_socket < 0) {
+            threadroutes[threadroutes_total - 1]->in_socket_fd = accept(socket, NULL, NULL);
+
+            // start a new websocket connection
+            printf("Starting websocket connection...\n");
+            threadroutes[threadroutes_total - 1]->out_websocket_fd = websocket_connect(purl);
+
+            if (threadroutes[threadroutes_total - 1]->in_socket_fd < 0) {
                 fprintf(stderr, "failed to accept a new connection. %s.\n", strerror(errno));
                 return_error = EXIT_FAILURE;
                 break;
@@ -226,7 +228,7 @@ int main(int argc, char *argv[]) {
             }
             threadroutes = tmp;
         } else {
-            printf("nope...\n");
+            // not ready
         }
     }
 

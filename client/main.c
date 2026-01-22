@@ -162,8 +162,10 @@ int main(int argc, char *argv[]) {
         return EXIT_FAILURE;
     }
     struct parsed_url purl = parse_url(arg0.value);
-    if (purl.protocol == unknown)
+    if (purl.protocol == unknown) {
         fprintf(stderr, "Unknown protocol.\n");
+        return EXIT_FAILURE;
+    }
     
     printf("Starting local connection...\n");
 

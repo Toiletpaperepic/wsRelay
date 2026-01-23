@@ -8,8 +8,8 @@
 #include <errno.h>
 #include <stdio.h>
 #include "commonmacros.h"
-#include "http_header.h"
 #include "websocket.h"
+#include "http_header.h"
 
 // https://en.wikipedia.org/wiki/WebSocket#Protocol
 
@@ -40,14 +40,15 @@ int websocket_connect(struct parsed_url purl) {
     }
 
     // tell the server to upgrade the connection 
-    char message[1024] = ""; 
-    make_http_header(purl, message);
+    const char* message = make_http_header(purl);
     printf("Sending message: %s\n", message);
 
     if (send(fd, message, strlen(message), 0) < 0) {
         fprintf(stderr, "send(): %s.\n", strerror(errno));
         exit(EXIT_FAILURE);
     }
+
+    free((void*)message);
 
     char buffer[1024] = {};
     if (recv(fd, buffer, sizeof(buffer), 0) < 0) {

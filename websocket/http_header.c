@@ -59,6 +59,8 @@ const char* make_http_header(struct parsed_url purl) {
     appendchar(&message, key);
     appendchar(&message, "\n");
 
+    free((void*)key);
+
     // Blank Line (end of request)
     appendchar(&message, "\n");
 

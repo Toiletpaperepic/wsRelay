@@ -41,21 +41,7 @@ int main() {
         printf("%i\n", *(int*)arg4.value);
         
 error:
-        struct Argument* nextarg = &arg4;
-        while (true) {
-            if (nextarg->value != NULL && nextarg->type != IS_BOOL) {
-                printf("freed %s\n", nextarg->name);
-                free(nextarg->value);
-            } else {
-                printf("not freed %s\n", nextarg->name);
-            }
-        
-            if (nextarg->next == NULL) {
-                break;
-            } else {
-                nextarg = nextarg->next;
-            }
-        }
+        cleanup_args(&arg4);
 
         if (return_error != 0) 
             return return_error;
@@ -68,9 +54,9 @@ error:
 
         register_argument(arg0, NULL, "test", IS_STRING, true);
 
-        rcheck(parse_args(argc, argv, &arg0) == true, "parsing command line failed to fail without the \"--test\" argument present.", free(arg0.value); return EXIT_FAILURE;);
+        rcheck(parse_args(argc, argv, &arg0) == true, "parsing command line failed to fail without the \"--test\" argument present.", cleanup_args(&arg0); return EXIT_FAILURE;);
 
-        free(arg0.value);
+        cleanup_args(&arg0);
     }
 
     // {
@@ -88,9 +74,9 @@ error:
 
         register_argument(arg0, NULL, "test", IS_UNSIGNED_INT, true);
 
-        rcheck(parse_args(argc, argv, &arg0) == true, "parsing command line failed to fail when using unexpected negative numbers.", free(arg0.value); return EXIT_FAILURE;);
+        rcheck(parse_args(argc, argv, &arg0) == true, "parsing command line failed to fail when using unexpected negative numbers.", cleanup_args(&arg0); return EXIT_FAILURE;);
 
-        free(arg0.value);
+        cleanup_args(&arg0);
     }
 
     {
@@ -99,9 +85,9 @@ error:
 
         register_argument(arg0, NULL, "test", IS_INT, true);
 
-        rcheck(parse_args(argc, argv, &arg0) == true, "parsing command line failed to fail when result is higher then INT_MAX.", free(arg0.value); return EXIT_FAILURE;);
+        rcheck(parse_args(argc, argv, &arg0) == true, "parsing command line failed to fail when result is higher then INT_MAX.", cleanup_args(&arg0); return EXIT_FAILURE;);
 
-        free(arg0.value);
+        cleanup_args(&arg0);
     }
 
     {
@@ -110,9 +96,9 @@ error:
 
         register_argument(arg0, NULL, "test", IS_UNSIGNED_INT, true);
 
-        rcheck(parse_args(argc, argv, &arg0) == true, "parsing command line failed to fail when result is higher then UINT_MAX.", free(arg0.value); return EXIT_FAILURE;);
+        rcheck(parse_args(argc, argv, &arg0) == true, "parsing command line failed to fail when result is higher then UINT_MAX.", cleanup_args(&arg0); return EXIT_FAILURE;);
 
-        free(arg0.value);
+        cleanup_args(&arg0);
     }
 
     return EXIT_SUCCESS;

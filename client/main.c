@@ -156,25 +156,45 @@ int main(int argc, char *argv[]) {
     register_argument(arg1, &arg0, "port", IS_UNSIGNED_INT, false);
     
     if (parse_args(argc, argv, &arg1)) {
+        cleanup_args(&arg1);
         return EXIT_FAILURE;
     }
+
     struct parsed_url purl = parse_url(arg0.value);
     if (purl.protocol == unknown) {
         fprintf(stderr, "Unknown protocol.\n");
+        cleanup_args(&arg1);
+        free((void*)purl.address);
+        free((void*)purl.path);
         return EXIT_FAILURE;
     }
     
-    printf("Starting local connection...\n");
+    uint16_t port = 0; 
+    if (arg1.value == NULL) {
+        port = 48375;
+    } else if (*(int*)arg1.value > UINT16_MAX) {
+        printf("invalid port.\n");
+        cleanup_args(&arg1);
+        free((void*)purl.address);
+        free((void*)purl.path);
+        return EXIT_FAILURE;
+    } else {
+        port = *(int*)arg1.value;
+    }
 
+    cleanup_args(&arg1);
+    
     unsigned int threadroutes_total = 1;
     struct routedata** threadroutes = malloc(threadroutes_total * sizeof(*threadroutes));
     
-    int socket = socket_bind(INADDR_ANY, arg1.value == NULL ? 48375 : *(int*)arg1.value);
+    printf("Starting local connection...\n");
+
+    int socket = socket_bind(INADDR_ANY, port);
     if (socket < 0) {
         fprintf(stderr, "socket failed to bind! exiting...\n");
         return EXIT_FAILURE;
     }
-    
+
     if (signal(SIGINT, catch_function) < 0) {
         fprintf(stderr, "An error occurred while setting up a signal handler! %s.\n", strerror(errno));
         return EXIT_FAILURE;
@@ -240,19 +260,6 @@ int main(int argc, char *argv[]) {
     if (close(socket) < 0) {
         fprintf(stderr, "close(): %s.\n", strerror(errno));
         return EXIT_FAILURE;
-    }
-
-    struct Argument* nextarg = &arg0;
-    while (true) {
-        if (nextarg->value != NULL && nextarg->type != IS_BOOL) {
-            free(nextarg->value);
-        }
-    
-        if (nextarg->next == NULL) {
-            break;
-        } else {
-            nextarg = nextarg->next;
-        }
     }
 
     return return_error != 0 ? EXIT_SUCCESS : return_error;

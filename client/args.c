@@ -73,6 +73,20 @@ void help() {
     // todo: ...
 }
 
+void cleanup_args(struct Argument* nextarg) {
+    while (true) {
+        if (nextarg->value != NULL && nextarg->type != IS_BOOL) {
+            free(nextarg->value);
+        }
+    
+        if (nextarg->next == NULL) {
+            break;
+        } else {
+            nextarg = nextarg->next;
+        }
+    }
+}
+
 bool parse_args(int argc, char *argv[], struct Argument* registerargs) {
     for (int i = 1; i < argc; i++) {
         struct Argument* nextarg = registerargs;
@@ -82,7 +96,6 @@ bool parse_args(int argc, char *argv[], struct Argument* registerargs) {
             memcpy(dashdashname, "--", sizeof("--"));
             strcat(dashdashname, nextarg->name);
 
-            printf("%s == %s\n", dashdashname, argv[i]);
             if (strcmp(dashdashname, argv[i]) == 0) {
                 if (nextarg->type == IS_BOOL) {
                     nextarg->value = (void*)true;

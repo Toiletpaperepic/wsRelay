@@ -202,7 +202,7 @@ int main(int argc, char *argv[]) {
 	    }
 
         if (fd.revents & POLLIN) {
-            threadroutes[threadroutes_total - 1] = malloc(sizeof(struct routedata*));
+            threadroutes[threadroutes_total - 1] = malloc(sizeof(struct routedata));
             threadroutes[threadroutes_total - 1]->out_url = &purl;
             threadroutes[threadroutes_total - 1]->in_socket_fd = accept(socket, NULL, NULL);
 

@@ -1,5 +1,5 @@
+#include <stdckdint.h>
 #include <assert.h>
-#include <errno.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -12,7 +12,14 @@ int32_t strtoint(const char* str) {
     if (str[0] == '-'){
         for (int i = 1; str[i] != '\0'; i++) {
             if (str[i] >= 48 && str[i] <= 57) {
-                num = num * 10 + (str[i] - 48);
+                int32_t result = 0;
+                
+                if (ckd_mul(&result, num, 10))
+                    return INT32_MAX;
+                if (ckd_add(&result, result, str[i] - 48))
+                    return INT32_MAX;
+
+                num = result;
             }
             else {
                 return INT32_MAX;
@@ -22,7 +29,14 @@ int32_t strtoint(const char* str) {
     } else {
         for (int i = 0; str[i] != '\0'; i++) {
             if (str[i] >= 48 && str[i] <= 57) {
-                num = num * 10 + (str[i] - 48);
+                int32_t result = 0;
+                
+                if (ckd_mul(&result, num, 10))
+                    return INT32_MAX;
+                if (ckd_add(&result, result, str[i] - 48))
+                    return INT32_MAX;
+
+                num = result;
             }
             else {
                 return INT32_MAX;
@@ -38,7 +52,14 @@ uint32_t strtouint(const char* str) {
 
     for (int i = 0; str[i] != '\0'; i++) {
         if (str[i] >= 48 && str[i] <= 57) {
-            num = num * 10 + (str[i] - 48);
+            uint32_t result = 0;
+                
+            if (ckd_mul(&result, num, 10))
+                return UINT32_MAX;
+            if (ckd_add(&result, result, str[i] - 48))
+                return UINT32_MAX;
+
+            num = result;
         }
         else {
             return UINT32_MAX;

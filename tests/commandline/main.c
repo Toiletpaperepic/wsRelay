@@ -93,17 +93,27 @@ error:
         free(arg0.value);
     }
 
-    /// I don't know how to fix it or care to fix it.
-    // {
-    //     char* argv[] = {"./a.out", "--test", "2147483648"}; 
-    //     int argc = sizeof(argv) / sizeof(char*);
+    {
+        char* argv[] = {"./a.out", "--test", "2147483648" /* INT_MAX + 1 */}; 
+        int argc = sizeof(argv) / sizeof(char*);
 
-    //     register_argument(arg0, NULL, "test", IS_INT, true);
+        register_argument(arg0, NULL, "test", IS_INT, true);
 
-    //     rcheck(parse_args(argc, argv, &arg0) == true, "parsing command line failed to fail when result is higher then INT_MAX.", free(arg0.value); return EXIT_FAILURE;);
+        rcheck(parse_args(argc, argv, &arg0) == true, "parsing command line failed to fail when result is higher then INT_MAX.", free(arg0.value); return EXIT_FAILURE;);
 
-    //     free(arg0.value);
-    // }
+        free(arg0.value);
+    }
+
+    {
+        char* argv[] = {"./a.out", "--test", "4294967296" /* INT_MAX + 1 */}; 
+        int argc = sizeof(argv) / sizeof(char*);
+
+        register_argument(arg0, NULL, "test", IS_UNSIGNED_INT, true);
+
+        rcheck(parse_args(argc, argv, &arg0) == true, "parsing command line failed to fail when result is higher then UINT_MAX.", free(arg0.value); return EXIT_FAILURE;);
+
+        free(arg0.value);
+    }
 
     return EXIT_SUCCESS;
 }

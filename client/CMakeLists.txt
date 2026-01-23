@@ -1,6 +1,5 @@
 add_executable(client
     main.c
-    main.h
     args.c
     args.h
     socket.c

@@ -1,5 +1,21 @@
+#include <sys/socket.h>
+#include <sys/epoll.h>
+#include <sys/poll.h>
+#include <pthread.h>
+#include <string.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include <assert.h>
+#include <stdint.h>
+#include <signal.h>
+#include <errno.h>
+#include <stdio.h>
+#include <fcntl.h>
 #define RESIZEBUFFER_CUSTOM_ERROR 1
-#include "main.h"
+#include "commonmacros.h"
+#include "websocket.h"
+#include "socket.h"
+#include "args.h"
 
 volatile sig_atomic_t status = 0;
 

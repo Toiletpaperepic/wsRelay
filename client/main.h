@@ -11,6 +11,7 @@
 #include <errno.h>
 #include <stdio.h>
 #include <fcntl.h>
+#include "commonmacros.h"
 #include "websocket.h"
 #include "socket.h"
 #include "args.h"

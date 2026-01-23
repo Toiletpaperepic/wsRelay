@@ -1,6 +1,5 @@
+#define RESIZEBUFFER_CUSTOM_ERROR 1
 #include "main.h"
-#include <stdio.h>
-#include <stdlib.h>
 
 volatile sig_atomic_t status = 0;
 
@@ -219,14 +218,7 @@ int main(int argc, char *argv[]) {
             pthread_create(&threadroutes[threadroutes_total - 1]->thread, NULL, &route, (void*)threadroutes[threadroutes_total - 1]);
             
             threadroutes_total++;
-            struct routedata** tmp = realloc(threadroutes, threadroutes_total * sizeof(*threadroutes));
-            if (tmp == NULL) {
-                fprintf(stderr, "realloc(): Unknown reason.\n");
-                free(threadroutes);
-                return_error = EXIT_FAILURE;
-                break;
-            }
-            threadroutes = tmp;
+            resizebuffer(threadroutes, threadroutes_total * sizeof(*threadroutes), return_error = EXIT_FAILURE; break;);
         } else {
             // not ready
         }

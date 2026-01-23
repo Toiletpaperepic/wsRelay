@@ -7,8 +7,9 @@
 #include <assert.h>
 #include <errno.h>
 #include <stdio.h>
-#include "websocket.h"
+#include "commonmacros.h"
 #include "http_header.h"
+#include "websocket.h"
 
 // https://en.wikipedia.org/wiki/WebSocket#Protocol
 
@@ -159,17 +160,6 @@ void websocket_send(int fd, void* buffer, uint64_t size, enum opcodes opcode, bo
         exit(EXIT_FAILURE);
     }
 }
-
-#define resizebuffer(old_buffer, newsize)                                                     \
-    void* new_buffer = realloc(old_buffer, newsize);                                          \
-    if (new_buffer == NULL) {                                                                 \
-        fprintf(stderr, "realloc(): Unknown reason.\n");                                      \
-        free(old_buffer);                                                                     \
-        exit(EXIT_FAILURE);                                                                   \
-    } else if (old_buffer != new_buffer) {                                                    \
-        old_buffer = new_buffer;                                                              \
-    }                                                                                         \
-    new_buffer = NULL;                                                                        \
 
 struct message websocket_recv(int fd) {
     bool FIN = false;

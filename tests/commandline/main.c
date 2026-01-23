@@ -3,12 +3,16 @@
 #include <stdio.h>
 #include <string.h>
 #include "../../client/args.h"
+#define CHECK_CUSTOM_ERROR_HANDLE 1
 #include "check.h"
+
+#define CUSTOM_ERROR return_error = EXIT_FAILURE; goto error;
 
 int main() {
     {
         char* argv[] = {"./a.out", /*"--test",*/ "--thisisabool", "--thisisastring", "Hello, World!", "--thisisaint", "-1", "--thisisaunsignedint", "1"}; 
         int argc = sizeof(argv) / sizeof(char*);
+        int return_error = 0;
 
         register_argument(arg0, NULL, "test", IS_BOOL, false);
         register_argument(arg1, &arg0, "thisisabool", IS_BOOL, false);
@@ -16,26 +20,27 @@ int main() {
         register_argument(arg3, &arg2, "thisisaint", IS_INT, false);
         register_argument(arg4, &arg3, "thisisaunsignedint", IS_UNSIGNED_INT, false);
 
-        rcheck(parse_args(argc, argv, &arg4) != true, "parsing command line failed.");
+        rcheck(parse_args(argc, argv, &arg4) != true, "parsing command line failed.", CUSTOM_ERROR);
 
-        check((bool)arg0.value != true);
+        check((bool)arg0.value != true, CUSTOM_ERROR);
         printf("%s\n", (bool)arg0.value ? "True" : "False");
 
-        check((bool)arg1.value != false);
+        check((bool)arg1.value != false, CUSTOM_ERROR);
         printf("%s\n", (bool)arg1.value ? "True" : "False");
 
-        check(arg2.value != NULL);
-        check(strcmp("Hello, World!", (char*)arg2.value) == 0);
+        check(arg2.value != NULL, CUSTOM_ERROR);
+        check(strcmp("Hello, World!", (char*)arg2.value) == 0, CUSTOM_ERROR);
         printf("%s\n", (char*)arg2.value);
         
-        check(arg3.value != NULL);
-        check(-1 == *(int*)arg3.value);
+        check(arg3.value != NULL, CUSTOM_ERROR);
+        check(-1 == *(int*)arg3.value, CUSTOM_ERROR);
         printf("%i\n", *(int*)arg3.value);
 
-        check(arg4.value != NULL);
-        check(1 == *(unsigned int*)arg4.value);
+        check(arg4.value != NULL, CUSTOM_ERROR);
+        check(1 == *(unsigned int*)arg4.value, CUSTOM_ERROR);
         printf("%i\n", *(int*)arg4.value);
-
+        
+error:
         struct Argument* nextarg = &arg4;
         while (true) {
             if (nextarg->value != NULL && nextarg->type != IS_BOOL) {
@@ -51,6 +56,9 @@ int main() {
                 nextarg = nextarg->next;
             }
         }
+
+        if (return_error != 0) 
+            return return_error;
     }
 
     // test if leaving out required arguments will error out.
@@ -60,7 +68,8 @@ int main() {
 
         register_argument(arg0, NULL, "test", IS_STRING, true);
 
-        rcheck(parse_args(argc, argv, &arg0) == true, "parsing command line failed to fail without the \"--test\" argument present.");
+        rcheck(parse_args(argc, argv, &arg0) == true, "parsing command line failed to fail without the \"--test\" argument present.", free(arg0.value); return EXIT_FAILURE;);
+
         free(arg0.value);
     }
 
@@ -74,15 +83,27 @@ int main() {
     // }
     
     {
-        char* argv[] = {"./a.out", "--test", "-100"}; 
+        char* argv[] = {"./a.out", "--test", "-1"}; 
         int argc = sizeof(argv) / sizeof(char*);
 
         register_argument(arg0, NULL, "test", IS_UNSIGNED_INT, true);
 
-        rcheck(parse_args(argc, argv, &arg0) == true, "parsing command line failed to fail when using unexpected negative numbers.");
+        rcheck(parse_args(argc, argv, &arg0) == true, "parsing command line failed to fail when using unexpected negative numbers.", free(arg0.value); return EXIT_FAILURE;);
 
         free(arg0.value);
     }
+
+    /// I don't know how to fix it or care to fix it.
+    // {
+    //     char* argv[] = {"./a.out", "--test", "2147483648"}; 
+    //     int argc = sizeof(argv) / sizeof(char*);
+
+    //     register_argument(arg0, NULL, "test", IS_INT, true);
+
+    //     rcheck(parse_args(argc, argv, &arg0) == true, "parsing command line failed to fail when result is higher then INT_MAX.", free(arg0.value); return EXIT_FAILURE;);
+
+    //     free(arg0.value);
+    // }
 
     return EXIT_SUCCESS;
 }

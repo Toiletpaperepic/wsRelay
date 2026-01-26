@@ -68,30 +68,11 @@ void websocket_send(int fd, void* buffer, uint64_t size, enum opcodes opcode, bo
 
     if(FIN == true) {
         byte0 = byte0 | 0b10000000;
-    } else {
-        // byte0 = byte0 | 0b00000000;
-    }
-
-    switch (opcode) {
-        case CONTINUATION:
-            byte0 = byte0 | CONTINUATION;
-            break;
-        case TEXT:
-            byte0 = byte0 | TEXT;
-            break;
-        case BINARY:
-            byte0 = byte0 | BINARY;
-            break;
-        case CLOSE:
-            byte0 = byte0 | CLOSE;
-            break;
-        case PING:
-            byte0 = byte0 | PING;
-            break;
-        case PONG:
-            byte0 = byte0 | PONG;
-            break;
-    }
+    } /* else {
+        byte0 = byte0 | 0b00000000;
+    } */
+    
+    byte0 = byte0 | opcode;
 
     assert((byte0 & 0b01110000) == 0);
 

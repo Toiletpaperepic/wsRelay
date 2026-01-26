@@ -24,7 +24,6 @@ const char* make_http_header(struct parsed_url purl) {
     message[0] = '\0';
 
     appendchar(&message, "GET ");
-
     appendchar(&message, purl.path);
     appendchar(&message, " HTTP/1.1\n");
 

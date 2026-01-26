@@ -68,7 +68,7 @@ void* route(void* ptrrd) {
 
     bool loop = true;
     while (status != SIGINT && loop) {
-        struct epoll_event epe[10];
+        struct epoll_event epe[50];
         
         printf("waiting for packets...\n");
         int fdevents = epoll_wait(epollfd, epe, sizeof(epe) / sizeof(struct epoll_event), 1000 * 5);
@@ -200,29 +200,34 @@ int main(int argc, char *argv[]) {
 
     cleanup_args(&arg1);
     
-    unsigned int threadroutes_total = 1;
-    struct routedata** threadroutes = malloc(threadroutes_total * sizeof(*threadroutes));
-    
     printf("Starting local connection...\n");
+
+    if (signal(SIGINT, catch_function) < 0) {
+        fprintf(stderr, "An error occurred while setting up a signal handler! %s.\n", strerror(errno));
+        free((void*)purl.address);
+        free((void*)purl.path);
+        return EXIT_FAILURE;
+    }
 
     int socket = socket_bind(INADDR_ANY, port);
     if (socket < 0) {
         fprintf(stderr, "socket failed to bind! exiting...\n");
+        free((void*)purl.address);
+        free((void*)purl.path);
         return EXIT_FAILURE;
     }
 
-    if (signal(SIGINT, catch_function) < 0) {
-        fprintf(stderr, "An error occurred while setting up a signal handler! %s.\n", strerror(errno));
+    if (listen(socket, 0) < 0) {
+        fprintf(stderr, "listen(): %s.\n", strerror(errno));
+        free((void*)purl.address);
+        free((void*)purl.path);
         return EXIT_FAILURE;
     }
     
-    if (listen(socket, 0) < 0) {
-        fprintf(stderr, "listen(): %s.\n", strerror(errno));
-        return EXIT_FAILURE;
-    }
-
+    unsigned int threadroutes_total = 1;
+    struct routedata** threadroutes = malloc(threadroutes_total * sizeof(*threadroutes));
     int return_error = 0;
-
+    
     // keep constantly looking for a new connection. when we do, pass it along to a another thread to handle it.
     while (status != SIGINT) {
         struct pollfd fd;
@@ -242,13 +247,19 @@ int main(int argc, char *argv[]) {
             threadroutes[threadroutes_total - 1]->done = false;
             threadroutes[threadroutes_total - 1]->out_url = &purl;
             threadroutes[threadroutes_total - 1]->in_socket_fd = accept(socket, NULL, NULL);
+            if (threadroutes[threadroutes_total - 1]->in_socket_fd < 0) {
+                fprintf(stderr, "failed to accept a new connection. %s.\n", strerror(errno));
+                free(threadroutes[threadroutes_total - 1]);
+                return_error = EXIT_FAILURE;
+                break;
+            }
 
             // start a new websocket connection
             printf("Starting websocket connection...\n");
             threadroutes[threadroutes_total - 1]->out_websocket_fd = websocket_connect(purl);
-
-            if (threadroutes[threadroutes_total - 1]->in_socket_fd < 0) {
-                fprintf(stderr, "failed to accept a new connection. %s.\n", strerror(errno));
+            if (threadroutes[threadroutes_total - 1]->out_websocket_fd < 0) {
+                fprintf(stderr, "failed to accept a new websocket connection.\n");
+                free(threadroutes[threadroutes_total - 1]);
                 return_error = EXIT_FAILURE;
                 break;
             }
@@ -268,15 +279,15 @@ int main(int argc, char *argv[]) {
         free(threadroutes[i]);
         printf("Thread[%i] exited with exitcode %i\n", i, return_val);
     }
-    
-    free(threadroutes);
-    free((void*)purl.address);
-    free((void*)purl.path);
-    
+
     if (close(socket) < 0) {
         fprintf(stderr, "close(): %s.\n", strerror(errno));
         return EXIT_FAILURE;
     }
+    
+    free(threadroutes);
+    free((void*)purl.address);
+    free((void*)purl.path);
 
     return return_error != 0 ? EXIT_SUCCESS : return_error;
 }

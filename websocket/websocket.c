@@ -7,6 +7,7 @@
 #include <assert.h>
 #include <errno.h>
 #include <stdio.h>
+#include <sys/types.h>
 #include "commonmacros.h"
 #include "websocket.h"
 #include "http_header.h"
@@ -23,7 +24,7 @@ int websocket_connect(struct parsed_url purl) {
     int fd = socket(AF_INET, SOCK_STREAM, 0);
     if (fd < 0) {
         fprintf(stderr, "socket(): %s.\n", strerror(errno));
-        exit(EXIT_FAILURE);
+        return -1;
     }
 
     struct sockaddr_in serverAddress;
@@ -32,11 +33,12 @@ int websocket_connect(struct parsed_url purl) {
 
     if (inet_pton(AF_INET, purl.address, &serverAddress.sin_addr) < 0) {
         fprintf(stderr, "inet_aton(): failed, Invalid address.\n");
+        return -1;
     }
     
     if (connect(fd, (struct sockaddr*)&serverAddress, sizeof(serverAddress)) < 0) {
         fprintf(stderr, "connect(): %s.\n", strerror(errno));
-        exit(EXIT_FAILURE);
+        return -1;
     }
 
     // tell the server to upgrade the connection 
@@ -45,19 +47,19 @@ int websocket_connect(struct parsed_url purl) {
 
     if (send(fd, message, strlen(message), 0) < 0) {
         fprintf(stderr, "send(): %s.\n", strerror(errno));
-        exit(EXIT_FAILURE);
+        return -1;
     }
 
     free((void*)message);
 
     char buffer[1024] = {};
-    if (recv(fd, buffer, sizeof(buffer), 0) < 0) {
+    ssize_t size = recv(fd, buffer, sizeof(buffer), 0);
+    if (size < 0) {
         fprintf(stderr, "recv(): %s.\n", strerror(errno));
-        exit(EXIT_FAILURE);
+        return -1;
     }
-    printf("received accept message: %s\n", buffer);
-    memset(buffer, '\0', sizeof(buffer));
-
+    printf("received accept message with size of %zi, %s\n", size, buffer);
+    
     //TODO: check for a valid response?
 
     return fd;

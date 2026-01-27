@@ -1,13 +1,18 @@
+#include <netinet/in.h>
 #include <sys/random.h>
 #include <arpa/inet.h>
+#include <sys/socket.h>
+#include <sys/types.h>
 #include <endian.h>
 #include <stdint.h>
 #include <string.h>
 #include <stdlib.h>
 #include <assert.h>
+#include <threads.h>
+#include <unistd.h>
 #include <errno.h>
 #include <stdio.h>
-#include <sys/types.h>
+#include <netdb.h>
 #include "commonmacros.h"
 #include "websocket.h"
 #include "http_header.h"
@@ -21,25 +26,57 @@
 #endif
 
 int websocket_connect(struct parsed_url purl) {
-    int fd = socket(AF_INET, SOCK_STREAM, 0);
-    if (fd < 0) {
-        fprintf(stderr, "socket(): %s.\n", strerror(errno));
+    struct addrinfo *result, *ai, hints;
+    int error, fd;
+
+    memset(&hints, 0, sizeof hints);
+    hints.ai_family = AF_UNSPEC;
+    hints.ai_socktype = SOCK_STREAM;
+    // hints.ai_flags = AI_CANONNAME;
+
+    // resolve the domain name into a list of addresses
+    error = getaddrinfo(purl.address, NULL, &hints, &result);
+    if (error != 0) {
+        if (error == EAI_SYSTEM) {
+            fprintf(stderr, "getaddrinfo: %s", strerror(errno));
+        } else {
+            fprintf(stderr, "getaddrinfo: gai_strerror: %s\n", gai_strerror(error));
+        }
         return -1;
     }
 
-    struct sockaddr_in serverAddress;
-    serverAddress.sin_family = AF_INET;
-    serverAddress.sin_port = htons(purl.port);
-
-    if (inet_pton(AF_INET, purl.address, &serverAddress.sin_addr) < 0) {
-        fprintf(stderr, "inet_aton(): failed, Invalid address.\n");
-        return -1;
-    }
+    bool success = false;
     
-    if (connect(fd, (struct sockaddr*)&serverAddress, sizeof(serverAddress)) < 0) {
-        fprintf(stderr, "connect(): %s.\n", strerror(errno));
-        return -1;
+    // loop over all returned results
+    for (ai = result; ai != NULL; ai = ai->ai_next) {
+        // if (ai->ai_canonname != NULL)
+        //     printf("canonical: %s\n", ai->ai_canonname);
+        // else
+        //     printf("canonical: no name...\n");
+
+        fd = socket(ai->ai_family, ai->ai_socktype, ai->ai_protocol);
+        if (fd < 0) {
+            fprintf(stderr, "socket(): %s.\n", strerror(errno));
+            continue;
+        }
+
+        ((struct sockaddr_in*)ai->ai_addr)->sin_port = htons(purl.port);
+        
+        if (connect(fd, ai->ai_addr, ai->ai_addrlen) < 0) {
+            fprintf(stderr, "connect(): %s.\n", strerror(errno));
+            close(fd);
+            continue;
+        }
+
+        success = !success;
     }
+
+    freeaddrinfo(result);
+
+    if (!success)
+        return -1;
+    else
+        printf("successfuly connected to a server using getaddrinfo!\n");
 
     // tell the server to upgrade the connection 
     const char* message = make_http_header(purl);

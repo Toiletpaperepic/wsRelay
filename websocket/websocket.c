@@ -48,11 +48,11 @@ int websocket_connect(struct parsed_url purl) {
     bool success = false;
     
     // loop over all returned results
-    for (ai = result; ai != NULL; ai = ai->ai_next) {
-        // if (ai->ai_canonname != NULL)
-        //     printf("canonical: %s\n", ai->ai_canonname);
-        // else
-        //     printf("canonical: no name...\n");
+    for (ai = result; ai != NULL && !success; ai = ai->ai_next) {
+        if (ai->ai_canonname != NULL)
+            printf("canonical: %s\n", ai->ai_canonname);
+        else
+            printf("canonical: no name...\n");
 
         fd = socket(ai->ai_family, ai->ai_socktype, ai->ai_protocol);
         if (fd < 0) {
@@ -60,7 +60,13 @@ int websocket_connect(struct parsed_url purl) {
             continue;
         }
 
-        ((struct sockaddr_in*)ai->ai_addr)->sin_port = htons(purl.port);
+        if (ai->ai_family == AF_INET) {
+            printf("using ipv4.\n");
+            ((struct sockaddr_in*)ai->ai_addr)->sin_port = htons(purl.port);
+        } else if (ai->ai_family == AF_INET6) {
+            printf("using ipv6.\n");
+            ((struct sockaddr_in6*)ai->ai_addr)->sin6_port = htons(purl.port);
+        }
         
         if (connect(fd, ai->ai_addr, ai->ai_addrlen) < 0) {
             fprintf(stderr, "connect(): %s.\n", strerror(errno));
@@ -84,6 +90,7 @@ int websocket_connect(struct parsed_url purl) {
 
     if (send(fd, message, strlen(message), 0) < 0) {
         fprintf(stderr, "send(): %s.\n", strerror(errno));
+        free((void*)message);
         return -1;
     }
 

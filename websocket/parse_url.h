@@ -1,3 +1,5 @@
+#include <stdint.h>
+
 enum protocol_type {
     unknown,
     ws,
@@ -7,7 +9,7 @@ enum protocol_type {
 struct parsed_url {
     enum protocol_type protocol;
     const char* address;
-    unsigned int port;
+    uint16_t port;
     const char* path;
 };
 

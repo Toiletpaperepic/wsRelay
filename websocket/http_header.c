@@ -39,7 +39,8 @@ const char* make_http_header(struct parsed_url purl) {
     // User Agent:
     /// going for something like this -> "wsrRelay/v1.0 (Linux; gcc 15.2.1; x86_64; https://github.com/Toiletpaperepic/wsRelay/) Hostname/Apollo-Lake"
     appendchar(&message, "User-Agent: wsrRelay/v");
-    appendchar(&message, "1.0 (" /* TODO: get this program's version from cmake */); 
+    appendchar(&message, PROJECT_VERSION);
+    appendchar(&message, " ("); 
 
     // TODO: create USER_AGENT_LESS_INFO env
 

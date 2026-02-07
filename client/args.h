@@ -23,4 +23,4 @@ struct Argument {
     structname.next = ptrnext;                                          \
 
 void cleanup_args(struct Argument* nextarg);
-bool parse_args(int argc, char *argv[], struct Argument* registerargs);
+bool parse_args(int argc, char *argv[], struct Argument* registerargs, bool ignore_unknowns);

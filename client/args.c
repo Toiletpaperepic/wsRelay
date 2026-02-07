@@ -83,7 +83,7 @@ void cleanup_args(struct Argument* nextarg) {
     }
 }
 
-bool parse_args(int argc, char *argv[], struct Argument* registerargs) {
+bool parse_args(int argc, char *argv[], struct Argument* registerargs, bool ignore_unknowns) {
     for (int i = 1; i < argc; i++) {
         struct Argument* nextarg = registerargs;
 
@@ -131,11 +131,14 @@ bool parse_args(int argc, char *argv[], struct Argument* registerargs) {
 
                 break;
             }
-            
             if (nextarg->next == NULL) {
-                printf("Unknown command: %s\n", argv[i]);
+                if (ignore_unknowns) {
+                    return false;
+                } else {
+                    printf("Unknown command: %s\n", argv[i]);
 
-                return true;
+                    return true;
+                }
             } else {
                 nextarg = nextarg->next;
             }

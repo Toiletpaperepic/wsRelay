@@ -180,7 +180,7 @@ int main(int argc, char *argv[]) {
     register_argument(argversion, NULL, "version", IS_BOOL, false)
     register_argument(arghelp, &argversion, "help", IS_BOOL, false)
 
-    if (parse_args(argc, argv, &arghelp)) {
+    if (parse_args(argc, argv, &arghelp, true)) {
         return EXIT_FAILURE;
     }
 
@@ -197,7 +197,7 @@ int main(int argc, char *argv[]) {
     register_argument(argouturl, NULL, "out-url", IS_STRING, true);
     register_argument(argport, &argouturl, "port", IS_UNSIGNED_INT, false);
     
-    if (parse_args(argc, argv, &argport)) {
+    if (parse_args(argc, argv, &argport, false)) {
         cleanup_args(&argport);
         return EXIT_FAILURE;
     }

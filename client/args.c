@@ -69,10 +69,6 @@ uint32_t strtouint(const char* str) {
     return num;
 }
 
-void help() {
-    // todo: ...
-}
-
 void cleanup_args(struct Argument* nextarg) {
     while (true) {
         if (nextarg->value != NULL && nextarg->type != IS_BOOL) {
@@ -130,7 +126,6 @@ bool parse_args(int argc, char *argv[], struct Argument* registerargs) {
                     }
                 } else {
                     printf("Missing operand.\n");
-                    help();
                     return true;
                 }
 

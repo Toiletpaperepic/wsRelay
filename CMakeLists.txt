@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.31.6)
 project(wsr VERSION 0.0.1 LANGUAGES C CXX)
 set(PROJECT_ADVERTISED_NAME wsRelay)
-add_compile_definitions(PROJECT_VERSION="${CMAKE_PROJECT_VERSION}")
+add_compile_definitions(__PROJECT_VERSION__="${CMAKE_PROJECT_VERSION}")
 
 add_subdirectory(utils)
 add_subdirectory(websocket)

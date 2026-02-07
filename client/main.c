@@ -24,6 +24,14 @@ static void catch_function(int signo) {
     status = signo;
 }
 
+void help() {
+    // todo: ...
+}
+
+void version() {
+    printf("wsRelay version %s\n", __PROJECT_VERSION__);
+}
+
 #define ROUTE_CLIENT_CONNECTION 0
 #define ROUTE_WEBSOCKET 1
 
@@ -168,37 +176,55 @@ FAILURE:
 }
 
 int main(int argc, char *argv[]) {
-    register_argument(arg0, NULL, "out-url", IS_STRING, true);
-    register_argument(arg1, &arg0, "port", IS_UNSIGNED_INT, false);
-    
-    if (parse_args(argc, argv, &arg1)) {
-        cleanup_args(&arg1);
+    /// make sure there is 0 required args here
+    register_argument(argversion, NULL, "version", IS_BOOL, false)
+    register_argument(arghelp, &argversion, "help", IS_BOOL, false)
+
+    if (parse_args(argc, argv, &arghelp)) {
         return EXIT_FAILURE;
     }
 
-    struct parsed_url purl = parse_url(arg0.value);
+    if ((bool)arghelp.value == true) {
+        help();
+        return EXIT_SUCCESS;
+    }
+
+    if ((bool)argversion.value == true) {
+        version();
+        return EXIT_SUCCESS;
+    }
+
+    register_argument(argouturl, NULL, "out-url", IS_STRING, true);
+    register_argument(argport, &argouturl, "port", IS_UNSIGNED_INT, false);
+    
+    if (parse_args(argc, argv, &argport)) {
+        cleanup_args(&argport);
+        return EXIT_FAILURE;
+    }
+
+    struct parsed_url purl = parse_url(argouturl.value);
     if (purl.protocol == unknown) {
         fprintf(stderr, "Unknown protocol.\n");
-        cleanup_args(&arg1);
+        cleanup_args(&argport);
         free((void*)purl.address);
         free((void*)purl.path);
         return EXIT_FAILURE;
     }
     
     uint16_t port = 0; 
-    if (arg1.value == NULL) {
+    if (argport.value == NULL) {
         port = 48375;
-    } else if (*(int*)arg1.value > UINT16_MAX) {
+    } else if (*(int*)argport.value > UINT16_MAX) {
         printf("invalid port.\n");
-        cleanup_args(&arg1);
+        cleanup_args(&argport);
         free((void*)purl.address);
         free((void*)purl.path);
         return EXIT_FAILURE;
     } else {
-        port = *(int*)arg1.value;
+        port = *(int*)argport.value;
     }
 
-    cleanup_args(&arg1);
+    cleanup_args(&argport);
     
     printf("Starting local connection...\n");
 

@@ -32,7 +32,6 @@ int websocket_connect(struct parsed_url purl) {
     memset(&hints, 0, sizeof hints);
     hints.ai_family = AF_UNSPEC;
     hints.ai_socktype = SOCK_STREAM;
-    // hints.ai_flags = AI_CANONNAME;
 
     // resolve the domain name into a list of addresses
     error = getaddrinfo(purl.address, NULL, &hints, &result);
@@ -49,11 +48,6 @@ int websocket_connect(struct parsed_url purl) {
     
     // loop over all returned results
     for (ai = result; ai != NULL && !success; ai = ai->ai_next) {
-        if (ai->ai_canonname != NULL)
-            printf("canonical: %s\n", ai->ai_canonname);
-        else
-            printf("canonical: no name...\n");
-
         fd = socket(ai->ai_family, ai->ai_socktype, ai->ai_protocol);
         if (fd < 0) {
             fprintf(stderr, "socket(): %s.\n", strerror(errno));

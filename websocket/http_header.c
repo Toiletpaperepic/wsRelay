@@ -1,9 +1,12 @@
+#include <errno.h>
 #include <sys/random.h>
 #include <base64.h>
 #include <stdint.h>
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
+#include <limits.h>
+#include <unistd.h>
 #include <stdio.h>
 #include "commonmacros.h"
 #include "websocket.h"
@@ -32,8 +35,59 @@ const char* make_http_header(struct parsed_url purl) {
     appendchar(&message, purl.address);
     appendchar(&message, "\n");
 
+    
     // User Agent:
-    appendchar(&message, "User-Agent: wsr-websocket/1.0\n");
+    /// going for something like this -> "wsrRelay/v1.0 (Linux; gcc 15.2.1; x86_64; https://github.com/Toiletpaperepic/wsRelay/) Hostname/Apollo-Lake"
+    appendchar(&message, "User-Agent: wsrRelay/v");
+    appendchar(&message, "1.0 (" /* TODO: get this program's version from cmake */); 
+
+    // TODO: create USER_AGENT_LESS_INFO env
+
+#if __linux__
+    appendchar(&message, "Linux");
+#elif __WIN32__
+    appendchar(&message, "Windows");
+#else
+#warning unknown platform
+appendchar(&message, "unknown platform");
+#endif
+
+    appendchar(&message, ";");
+
+#if defined(__clang__)
+    appendchar(&message, " clang ");
+    appendchar(&message, __clang_version__);
+    message[strlen(message) - 1] = ';';
+#elif defined(__GNUC__)
+    appendchar(&message, " gcc ");
+    appendchar(&message, __VERSION__);
+    appendchar(&message, ";");
+#else
+#warning unknown compiler
+    appendchar(&message, " unknown compiler;");
+#endif
+
+#if __x86_64__
+    appendchar(&message, " x86_64");
+#elif __aarch64__
+    appendchar(&message, " aarch64");
+#else
+#warning unknown arch
+    appendchar(&message, " unknown arch");
+#endif
+
+    appendchar(&message, "; +https://github.com/Toiletpaperepic/wsRelay/) ");
+
+    char hostname[HOST_NAME_MAX];
+    if (gethostname(hostname, sizeof(hostname)) < 0) {
+        fprintf(stderr, "gethostname(): %s.\n", strerror(errno));
+    } else {
+
+        appendchar(&message, "Hostname/");
+        appendchar(&message, hostname);
+    }
+
+    appendchar(&message, "\n");
 
     // Accept:
     appendchar(&message, "Accept: */*\n");

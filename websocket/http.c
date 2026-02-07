@@ -1,4 +1,3 @@
-#include <errno.h>
 #include <sys/random.h>
 #include <base64.h>
 #include <stdint.h>
@@ -7,6 +6,7 @@
 #include <string.h>
 #include <limits.h>
 #include <unistd.h>
+#include <errno.h>
 #include <stdio.h>
 #include "commonmacros.h"
 #include "websocket.h"
@@ -37,7 +37,7 @@ const char* make_http_header(struct parsed_url purl) {
 
     
     // User Agent:
-    /// going for something like this -> "wsrRelay/v1.0 (Linux; gcc 15.2.1; x86_64; https://github.com/Toiletpaperepic/wsRelay/) Hostname/Apollo-Lake"
+    /// going for something like this -> "wsrRelay/v1.0 (Linux; gcc 15.2.1; x86_64; +https://github.com/Toiletpaperepic/wsRelay/) Hostname/Apollo-Lake"
     appendchar(&message, "User-Agent: wsrRelay/v");
     appendchar(&message, PROJECT_VERSION);
     appendchar(&message, " ("); 
@@ -50,7 +50,7 @@ const char* make_http_header(struct parsed_url purl) {
     appendchar(&message, "Windows");
 #else
 #warning unknown platform
-appendchar(&message, "unknown platform");
+    appendchar(&message, "unknown platform");
 #endif
 
     appendchar(&message, ";");

@@ -102,12 +102,12 @@ error:
     }
 
     {
-        char* argv[] = {"./a.out", "--test"}; 
+        char* argv[] = {"./a.out", "--thisisunknown"}; 
         int argc = sizeof(argv) / sizeof(char*);
 
-        register_argument(arg0, NULL, "test", IS_BOOL, false);
+        register_argument(arg0, NULL, "thisisknown", IS_BOOL, false);
 
-        rcheck(parse_args(argc, argv, &arg0, false) == false, "parsing command line failed to ignore unknown arguments.", cleanup_args(&arg0); return EXIT_FAILURE;);
+        rcheck(parse_args(argc, argv, &arg0, true) == false, "parsing command line failed to ignore unknown arguments.", cleanup_args(&arg0); return EXIT_FAILURE;);
 
         cleanup_args(&arg0);
     }

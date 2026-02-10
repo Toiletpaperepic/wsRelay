@@ -58,15 +58,15 @@ const char* make_http_header(struct parsed_url purl) {
 #if defined(__clang__)
     appendchar(&message, " clang ");
     appendchar(&message, __clang_version__);
-    message[strlen(message) - 1] = ';';
 #elif defined(__GNUC__)
     appendchar(&message, " gcc ");
     appendchar(&message, __VERSION__);
-    appendchar(&message, ";");
 #else
 #warning unknown compiler
-    appendchar(&message, " unknown compiler;");
+    appendchar(&message, " unknown compiler");
 #endif
+
+    appendchar(&message, ";");
 
 #if __x86_64__
     appendchar(&message, " x86_64");

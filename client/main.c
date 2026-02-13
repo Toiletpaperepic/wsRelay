@@ -2,6 +2,7 @@
 #include <sys/epoll.h>
 #include <sys/poll.h>
 #include <pthread.h>
+#include <stdbool.h>
 #include <string.h>
 #include <unistd.h>
 #include <stdlib.h>

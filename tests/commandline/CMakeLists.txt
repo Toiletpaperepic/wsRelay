@@ -4,5 +4,4 @@ add_executable(commandline
     ../../client/args.h
 )
 
-set_property(TARGET commandline PROPERTY C_STANDARD 23)
 endtest(commandline)

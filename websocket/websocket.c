@@ -3,12 +3,13 @@
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include <sys/types.h>
+#include <threads.h>
+#include <stdbool.h>
 #include <endian.h>
 #include <stdint.h>
 #include <string.h>
 #include <stdlib.h>
 #include <assert.h>
-#include <threads.h>
 #include <unistd.h>
 #include <errno.h>
 #include <stdio.h>

@@ -1,7 +1,6 @@
 #include "parse_url.h"
 #include "opcodes.h"
-#include <stddef.h>
-#include <stdint.h>
+#include <stdbool.h>
 
 struct message {
     uint64_t size;

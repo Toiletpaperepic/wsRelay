@@ -11,9 +11,8 @@
 #include <signal.h>
 #include <errno.h>
 #include <stdio.h>
-#include <fcntl.h>
 #define RESIZEBUFFER_CUSTOM_ERROR 1
-#include "commonmacros.h"
+#include "common_macros.h"
 #include "websocket.h"
 #include "socket.h"
 #include "args.h"
@@ -77,7 +76,7 @@ void* route(void* ptrrd) {
 
     bool loop = true;
     while (status != SIGINT && loop) {
-        struct epoll_event epe[50];
+        struct epoll_event epe[2];
         
         printf("waiting for packets...\n");
         int fdevents = epoll_wait(epollfd, epe, sizeof(epe) / sizeof(struct epoll_event), 1000 * 5);
@@ -307,14 +306,15 @@ int main(int argc, char *argv[]) {
         printf("Thread[%i] exited with exitcode %i\n", i, return_val);
     }
 
-    if (close(socket) < 0) {
-        fprintf(stderr, "close(): %s.\n", strerror(errno));
-        return EXIT_FAILURE;
-    }
     
     free(threadroutes);
     free((void*)purl.address);
     free((void*)purl.path);
+    
+    if (close(socket) < 0) {
+        fprintf(stderr, "close(): %s.\n", strerror(errno));
+        return EXIT_FAILURE;
+    }
 
     return return_error != 0 ? EXIT_SUCCESS : return_error;
 }

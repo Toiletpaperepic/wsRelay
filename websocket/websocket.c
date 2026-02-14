@@ -1,9 +1,7 @@
 #include <netinet/in.h>
 #include <sys/random.h>
-#include <arpa/inet.h>
 #include <sys/socket.h>
 #include <sys/types.h>
-#include <threads.h>
 #include <stdbool.h>
 #include <endian.h>
 #include <stdint.h>
@@ -14,7 +12,7 @@
 #include <errno.h>
 #include <stdio.h>
 #include <netdb.h>
-#include "commonmacros.h"
+#include "common_macros.h"
 #include "websocket.h"
 #include "http.h"
 

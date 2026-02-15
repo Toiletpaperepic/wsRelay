@@ -25,10 +25,6 @@ static void catch_function(int signo) {
     status = signo;
 }
 
-void help() {
-    // todo: ...
-}
-
 void version() {
     printf("wsRelay %s\n", __PROJECT_VERSION__);
     char* message = malloc(1);
@@ -36,6 +32,12 @@ void version() {
     make_user_agent(&message);
     printf("%s", message);
     free(message);
+}
+
+void help(struct Argument* firstarglist, struct Argument* secondarglist) {
+    printf("Usage: wsrelay --out-url <url> [options]\n");
+    print_description(firstarglist);
+    print_description(secondarglist);
 }
 
 #define ROUTE_CLIENT_CONNECTION 0
@@ -182,16 +184,21 @@ FAILURE:
 }
 
 int main(int argc, char *argv[]) {
-    /// make sure there is 0 required args here
-    register_argument(argversion, NULL, "version", IS_BOOL, false)
-    register_argument(arghelp, &argversion, "help", IS_BOOL, false)
+    // make sure there is 0 required args here
+    // first parse
+    register_argument(argversion, NULL, "version", IS_BOOL, false, "Display wsRelay version information.")
+    register_argument(arghelp, &argversion, "help", IS_BOOL, false, "Display this information.")
+    
+    // second parse
+    register_argument(argouturl, NULL, "out-url", IS_STRING, true, "Specify where <port> will forward to.");
+    register_argument(argport, &argouturl, "port", IS_UNSIGNED_INT, false, "Specify <port> will be set.");
 
     if (parse_args(argc, argv, &arghelp, true)) {
         return EXIT_FAILURE;
     }
 
     if ((bool)arghelp.value == true) {
-        help();
+        help(&arghelp, &argport);
         return EXIT_SUCCESS;
     }
 
@@ -199,9 +206,6 @@ int main(int argc, char *argv[]) {
         version();
         return EXIT_SUCCESS;
     }
-
-    register_argument(argouturl, NULL, "out-url", IS_STRING, true);
-    register_argument(argport, &argouturl, "port", IS_UNSIGNED_INT, false);
     
     if (parse_args(argc, argv, &argport, false)) {
         cleanup_args(&argport);

@@ -70,6 +70,18 @@ uint32_t strtouint(const char* str) {
     return num;
 }
 
+void print_description(struct Argument* nextarg) {
+    while (true) {
+        printf("    %s - %s\n", nextarg->name, nextarg->description);
+    
+        if (nextarg->next == NULL) {
+            break;
+        } else {
+            nextarg = nextarg->next;
+        }
+    }
+}
+
 void cleanup_args(struct Argument* nextarg) {
     while (true) {
         if (nextarg->value != NULL && nextarg->type != IS_BOOL) {

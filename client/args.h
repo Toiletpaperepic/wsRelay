@@ -12,15 +12,18 @@ struct Argument {
     enum argType type;
     void* value;
     struct Argument* next;
+    const char* description;
 };
 
-#define register_argument(structname, ptrnext, dname, dtype, drequired) \
-    struct Argument structname ;                                        \
-    structname.name = dname;                                            \
-    structname.required = drequired;                                    \
-    structname.type = dtype;                                            \
-    structname.value = NULL;                                            \
-    structname.next = ptrnext;                                          \
+#define register_argument(structname, ptrnext, dname, dtype, drequired, ddescription)                                     \
+    struct Argument structname ;                                                                                          \
+    structname.name = dname;                                                                                              \
+    structname.required = drequired;                                                                                      \
+    structname.type = dtype;                                                                                              \
+    structname.value = NULL;                                                                                              \
+    structname.next = ptrnext;                                                                                            \
+    structname.description = ddescription;                                                                                \
 
 void cleanup_args(struct Argument* nextarg);
+void print_description(struct Argument* nextarg);
 bool parse_args(int argc, char *argv[], struct Argument* registerargs, bool ignore_unknowns);

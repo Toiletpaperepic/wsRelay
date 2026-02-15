@@ -84,7 +84,7 @@ void print_description(struct Argument* nextarg) {
 
 void cleanup_args(struct Argument* nextarg) {
     while (true) {
-        if (nextarg->value != NULL && nextarg->type != IS_BOOL) {
+        if (nextarg->value != NULL && nextarg->type != IS_BOOL && nextarg->type != IS_STRING) {
             free(nextarg->value);
         }
     
@@ -131,7 +131,7 @@ bool parse_args(int argc, char *argv[], struct Argument* registerargs, bool igno
                             i++;
                             break;
                         case IS_STRING:
-                            nextarg->value = strdup(argv[i + 1]);
+                            nextarg->value = argv[i + 1];
                             i++;
                             break;
                         default:

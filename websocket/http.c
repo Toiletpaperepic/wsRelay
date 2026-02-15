@@ -22,6 +22,61 @@ void appendchar(char** destinationstring, const char* sourcestring) {
     strcat(*destinationstring, sourcestring);
 } 
 
+/// going for something like this -> "wsrRelay/v1.0 (Linux; gcc 15.2.1; x86_64; +https://github.com/Toiletpaperepic/wsRelay/) Hostname/Apollo-Lake"
+void make_user_agent(char** destinationstring) {
+    appendchar(destinationstring, "User-Agent: wsrRelay/v");
+    appendchar(destinationstring, __PROJECT_VERSION__);
+    appendchar(destinationstring, " ("); 
+    
+    // TODO: create USER_AGENT_LESS_INFO env
+    
+    #if __linux__
+    appendchar(destinationstring, "Linux");
+    #elif __WIN32__
+    appendchar(destinationstring, "Windows");
+    #else
+    #warning unknown platform
+    appendchar(destinationstring, "unknown platform");
+    #endif
+    
+    appendchar(destinationstring, ";");
+    
+    #if defined(__clang__)
+    appendchar(destinationstring, " clang ");
+    appendchar(destinationstring, __clang_version__);
+    #elif defined(__GNUC__)
+    appendchar(destinationstring, " gcc ");
+    appendchar(destinationstring, __VERSION__);
+    #else
+    #warning unknown compiler
+    appendchar(destinationstring, " unknown compiler");
+    #endif
+    
+    appendchar(destinationstring, ";");
+    
+    #if __x86_64__
+    appendchar(destinationstring, " x86_64");
+    #elif __aarch64__
+    appendchar(destinationstring, " aarch64");
+    #else
+    #warning unknown arch
+    appendchar(destinationstring, " unknown arch");
+    #endif
+    
+    appendchar(destinationstring, "; +https://github.com/Toiletpaperepic/wsRelay/) ");
+    
+    char hostname[HOST_NAME_MAX];
+    if (gethostname(hostname, sizeof(hostname)) < 0) {
+        fprintf(stderr, "gethostname(): %s.\n", strerror(errno));
+    } else {
+    
+        appendchar(destinationstring, "Hostname/");
+        appendchar(destinationstring, hostname);
+    }
+    
+    appendchar(destinationstring, "\n");
+}
+
 const char* make_http_header(struct parsed_url purl) {
     char* message = malloc(1);
     message[0] = '\0';
@@ -35,60 +90,8 @@ const char* make_http_header(struct parsed_url purl) {
     appendchar(&message, purl.address);
     appendchar(&message, "\n");
 
-    
     // User Agent:
-    /// going for something like this -> "wsrRelay/v1.0 (Linux; gcc 15.2.1; x86_64; +https://github.com/Toiletpaperepic/wsRelay/) Hostname/Apollo-Lake"
-    appendchar(&message, "User-Agent: wsrRelay/v");
-    appendchar(&message, __PROJECT_VERSION__);
-    appendchar(&message, " ("); 
-
-    // TODO: create USER_AGENT_LESS_INFO env
-
-#if __linux__
-    appendchar(&message, "Linux");
-#elif __WIN32__
-    appendchar(&message, "Windows");
-#else
-#warning unknown platform
-    appendchar(&message, "unknown platform");
-#endif
-
-    appendchar(&message, ";");
-
-#if defined(__clang__)
-    appendchar(&message, " clang ");
-    appendchar(&message, __clang_version__);
-#elif defined(__GNUC__)
-    appendchar(&message, " gcc ");
-    appendchar(&message, __VERSION__);
-#else
-#warning unknown compiler
-    appendchar(&message, " unknown compiler");
-#endif
-
-    appendchar(&message, ";");
-
-#if __x86_64__
-    appendchar(&message, " x86_64");
-#elif __aarch64__
-    appendchar(&message, " aarch64");
-#else
-#warning unknown arch
-    appendchar(&message, " unknown arch");
-#endif
-
-    appendchar(&message, "; +https://github.com/Toiletpaperepic/wsRelay/) ");
-
-    char hostname[HOST_NAME_MAX];
-    if (gethostname(hostname, sizeof(hostname)) < 0) {
-        fprintf(stderr, "gethostname(): %s.\n", strerror(errno));
-    } else {
-
-        appendchar(&message, "Hostname/");
-        appendchar(&message, hostname);
-    }
-
-    appendchar(&message, "\n");
+    make_user_agent(&message);
 
     // Accept:
     appendchar(&message, "Accept: */*\n");

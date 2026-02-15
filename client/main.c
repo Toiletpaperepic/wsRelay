@@ -15,6 +15,7 @@
 #include "common_macros.h"
 #include "websocket.h"
 #include "socket.h"
+#include "http.h"
 #include "args.h"
 
 volatile sig_atomic_t status = 0;
@@ -29,7 +30,12 @@ void help() {
 }
 
 void version() {
-    printf("wsRelay version %s\n", __PROJECT_VERSION__);
+    printf("wsRelay %s\n", __PROJECT_VERSION__);
+    char* message = malloc(1);
+    message[0] = '\0';
+    make_user_agent(&message);
+    printf("%s", message);
+    free(message);
 }
 
 #define ROUTE_CLIENT_CONNECTION 0

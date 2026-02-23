@@ -29,8 +29,9 @@ void make_user_agent(char** destinationstring) {
     appendchar(destinationstring, " ("); 
     
     // TODO: create USER_AGENT_LESS_INFO env
-    
-    #if __linux__
+    #if __ANDROID__
+    appendchar(destinationstring, "Android");
+    #elif __linux__
     appendchar(destinationstring, "Linux");
     #elif __WIN32__
     appendchar(destinationstring, "Windows");

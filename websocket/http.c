@@ -24,7 +24,7 @@ void appendchar(char** destinationstring, const char* sourcestring) {
 
 /// going for something like this -> "wsrRelay/v1.0 (Linux; gcc 15.2.1; x86_64; +https://github.com/Toiletpaperepic/wsRelay/) Hostname/Apollo-Lake"
 void make_user_agent(char** destinationstring) {
-    appendchar(destinationstring, "User-Agent: wsrRelay/v");
+    appendchar(destinationstring, "User-Agent: wsrRelay/");
     appendchar(destinationstring, __PROJECT_VERSION__);
     appendchar(destinationstring, " ("); 
     

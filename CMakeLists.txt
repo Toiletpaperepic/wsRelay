@@ -1,6 +1,53 @@
 cmake_minimum_required(VERSION 3.31.6)
-project(wsrelay VERSION 0.0.1 LANGUAGES C CXX)
+project(wsrelay VERSION 0.0.1 LANGUAGES C)
 add_compile_definitions(__PROJECT_VERSION__="${CMAKE_PROJECT_VERSION}")
+
+include(CheckSourceCompiles)
+include(CheckSymbolExists)
+check_symbol_exists(ckd_add "stdckdint.h" HAVE_CKD_ADD)
+check_symbol_exists(ckd_mul "stdckdint.h" HAVE_CKD_MUL)
+
+if(NOT HAVE_CKD_ADD)
+    check_source_compiles(C [[
+        #include <stdint.h>
+        int main() {
+            int32_t a = INT32_MAX;
+            int32_t b = 1;
+            int32_t result;
+            __builtin_add_overflow(a, b, &result); 
+            return 0; 
+        }
+        ]]
+        HAVE___BUILTIN_ADD_OVERFLOW
+    )
+endif()
+
+if(NOT HAVE_CKD_MUL)
+    check_source_compiles(C [[
+        #include <stdint.h>
+        int main() {
+            int32_t a = INT32_MAX;
+            int32_t b = 2;
+            int32_t result;
+            __builtin_mul_overflow(a, b, &result); 
+            return 0; 
+        }
+        ]]
+        HAVE___BUILTIN_MUL_OVERFLOW
+    )
+endif()
+
+if(HAVE_CKD_ADD)
+    add_compile_definitions(HAVE_CKD_ADD)
+elseif(HAVE___BUILTIN_ADD_OVERFLOW)
+    add_compile_definitions(HAVE___BUILTIN_ADD_OVERFLOW)
+endif()
+
+if(HAVE_CKD_MUL)
+    add_compile_definitions(HAVE_CKD_MUL)
+elseif(HAVE___BUILTIN_MUL_OVERFLOW)
+    add_compile_definitions(HAVE___BUILTIN_MUL_OVERFLOW)
+endif()
 
 # ----------utils----------
 add_library(base64

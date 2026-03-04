@@ -1,4 +1,6 @@
+#if HAVE_CKD_ADD || HAVE_CKD_MUL 
 #include <stdckdint.h>
+#endif
 #include <stdbool.h>
 #include <assert.h>
 #include <stdint.h>
@@ -15,9 +17,17 @@ int32_t strtoint(const char* str) {
             if (str[i] >= 48 && str[i] <= 57) {
                 int32_t result = 0;
                 
+#if HAVE_CKD_MUL
                 if (ckd_mul(&result, num, 10))
+#elif HAVE___BUILTIN_MUL_OVERFLOW
+                if (__builtin_mul_overflow(num, 10, &result))
+#endif
                     return INT32_MAX;
+#if HAVE_CKD_ADD
                 if (ckd_add(&result, result, str[i] - 48))
+#elif HAVE___BUILTIN_ADD_OVERFLOW
+                if (__builtin_add_overflow(result, str[i] - 48, &result))
+#endif
                     return INT32_MAX;
 
                 num = result;
@@ -32,9 +42,17 @@ int32_t strtoint(const char* str) {
             if (str[i] >= 48 && str[i] <= 57) {
                 int32_t result = 0;
                 
+#if HAVE_CKD_MUL
                 if (ckd_mul(&result, num, 10))
+#elif HAVE___BUILTIN_MUL_OVERFLOW
+                if (__builtin_mul_overflow(num, 10, &result))
+#endif
                     return INT32_MAX;
+#if HAVE_CKD_ADD
                 if (ckd_add(&result, result, str[i] - 48))
+#elif HAVE___BUILTIN_ADD_OVERFLOW
+                if (__builtin_add_overflow(result, str[i] - 48, &result))
+#endif
                     return INT32_MAX;
 
                 num = result;
@@ -55,9 +73,17 @@ uint32_t strtouint(const char* str) {
         if (str[i] >= 48 && str[i] <= 57) {
             uint32_t result = 0;
                 
-            if (ckd_mul(&result, num, 10))
+#if HAVE_CKD_MUL
+                if (ckd_mul(&result, num, 10))
+#elif HAVE___BUILTIN_MUL_OVERFLOW
+                if (__builtin_mul_overflow(num, 10, &result))
+#endif
                 return UINT32_MAX;
-            if (ckd_add(&result, result, str[i] - 48))
+#if HAVE_CKD_ADD
+                if (ckd_add(&result, result, str[i] - 48))
+#elif HAVE___BUILTIN_ADD_OVERFLOW
+                if (__builtin_add_overflow(result, str[i] - 48, &result))
+#endif
                 return UINT32_MAX;
 
             num = result;

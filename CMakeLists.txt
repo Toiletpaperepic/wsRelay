@@ -45,8 +45,23 @@ set_property(TARGET client PROPERTY OUTPUT_NAME ${PROJECT_NAME})
 install(TARGETS client RUNTIME DESTINATION bin)
 # -------------------------
 
+# ---------tests-----------
 include(CTest)
-add_subdirectory(tests)
+
+macro(endtest testname)
+    set_property(TARGET ${testname} PROPERTY OUTPUT_NAME ${PROJECT_NAME}-${testname}-test)
+    target_include_directories(${testname} PUBLIC tests/include)
+    add_test(NAME ${testname} COMMAND ${testname})
+endmacro()
+
+add_executable(commandline
+    tests/commandline/main.c
+    client/args.c
+    client/args.h
+)
+
+endtest(commandline)
+# -------------------------
 
 include(GNUInstallDirs)
 set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE")

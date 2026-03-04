@@ -41,12 +41,16 @@ if(HAVE_CKD_ADD)
     add_compile_definitions(HAVE_CKD_ADD)
 elseif(HAVE___BUILTIN_ADD_OVERFLOW)
     add_compile_definitions(HAVE___BUILTIN_ADD_OVERFLOW)
+else()
+    message(FATAL_ERROR "Could not find a suitable Checked Arithmetic function for addition")
 endif()
 
 if(HAVE_CKD_MUL)
     add_compile_definitions(HAVE_CKD_MUL)
 elseif(HAVE___BUILTIN_MUL_OVERFLOW)
     add_compile_definitions(HAVE___BUILTIN_MUL_OVERFLOW)
+else()
+    message(FATAL_ERROR "Could not find a suitable Checked Arithmetic function for multiplication")
 endif()
 
 # ----------utils----------

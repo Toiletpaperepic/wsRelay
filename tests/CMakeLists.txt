@@ -5,6 +5,4 @@ macro(endtest test)
     add_test(NAME ${test} COMMAND ${test})
 endmacro()
 
-# fixme: add_subdirectory(connection)
-
 add_subdirectory(commandline)

@@ -78,7 +78,11 @@ add_library(websocket SHARED
 
 target_include_directories(websocket PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/websocket)
 target_link_libraries(websocket PUBLIC base64 commoninclude)
-set_property(TARGET websocket PROPERTY OUTPUT_NAME ${PROJECT_NAME}-websocket)
+set_target_properties(websocket PROPERTIES
+    OUTPUT_NAME ${PROJECT_NAME}-websocket
+    VERSION ${CMAKE_PROJECT_VERSION}
+    SOVERSION 1
+)
 install(TARGETS websocket LIBRARY DESTINATION lib)
 # -------------------------
 

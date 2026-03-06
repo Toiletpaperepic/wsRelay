@@ -102,31 +102,27 @@ int websocket_connect(struct parsed_url purl) {
     return fd;
 }
 
-void websocket_send(int fd, void* buffer, uint64_t size, enum opcodes opcode, bool FIN) {
+int websocket_send(int fd, void* buffer, uint64_t size, enum opcodes opcode, bool FIN) {
     uint8_t byte0 = 0, byte1 = 0;
 
-    if(FIN == true) {
+    if(FIN == true)
         byte0 = byte0 | 0b10000000;
-    } /* else {
-        byte0 = byte0 | 0b00000000;
-    } */
     
     byte0 = byte0 | opcode;
 
     assert((byte0 & 0b01110000) == 0);
 
-    // masked is always true as a client.
-    byte1 = byte1 | 0b10000000;
+    byte1 = byte1 | 0b10000000; // masked is always true as a client.
     unsigned int extraPayloadlength = 0;
 
-    if (size <= 125) {
-        byte1 = byte1 | size;
+    if (size <= 125) { // size fits in 7 bits
+        byte1 = byte1 | (uint8_t)size;
         printf("size is smaller then 125\n");
-    } else if (size >= 125 && size < UINT16_MAX) { // 16 bits
+    } else if (size >= 125 && size < UINT16_MAX) { // size fits in 16 bits
         byte1 = byte1 | 126;
         extraPayloadlength = sizeof(uint16_t);
         printf("size is smaller then UINT16_MAX\n");
-    } else if (size >= 125 && size > UINT16_MAX && size < UINT64_MAX) { // 64 bits
+    } else if (size >= 125 && size > UINT16_MAX && size < UINT64_MAX) { // size fits in 64 bits
         byte1 = byte1 | 127;
         extraPayloadlength = sizeof(uint64_t);
         printf("size is smaller then UINT64_MAX\n");
@@ -178,8 +174,10 @@ void websocket_send(int fd, void* buffer, uint64_t size, enum opcodes opcode, bo
 
     if (send(fd, payload, sizeof(payload), 0) < 0) {
         fprintf(stderr, "send(): %s.\n", strerror(errno));
-        exit(EXIT_FAILURE);
+        return EXIT_FAILURE;
     }
+
+    return EXIT_SUCCESS;
 }
 
 struct message websocket_recv(int fd) {
@@ -200,6 +198,11 @@ struct message websocket_recv(int fd) {
         printf("FIN: %s\n", FIN ? "True" : "False");
 
         assert((header[0] & 0b01110000) == 0); // fixme: we should really disconect instead of crashing the program.
+
+        // if ((byte0 & 0b01110000) != 0) {
+        //     fprintf(stderr, "RSV[1..3] has a non 0 value! Connection must be considered a FAIL!");
+        //     return EXIT_FAILURE;
+        // }
 
         enum opcodes opcode = header[0] & 0b00001111;
         printf("opcode: %i\n", opcode);

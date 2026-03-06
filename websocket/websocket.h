@@ -8,6 +8,6 @@ struct message {
     void* buffer;
 };
 
-void websocket_send(int fd, void* buffer, uint64_t size, enum opcodes opcode, bool FIN);
+int websocket_send(int fd, void* buffer, uint64_t size, enum opcodes opcode, bool FIN);
 struct message websocket_recv(int fd);
 int websocket_connect(struct parsed_url purl);

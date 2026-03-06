@@ -40,29 +40,42 @@ void help(struct Argument* firstarglist, struct Argument* secondarglist) {
     print_description(secondarglist);
 }
 
-#define ROUTE_CLIENT_CONNECTION 0
-#define ROUTE_WEBSOCKET 1
+enum connection_type {
+    ROUTE_CLIENT_CONNECTION, 
+    ROUTE_SERVER_WEBSOCKET_CONNECTION
+};
+
+enum thread_error {
+    CONTINUE,
+    NORMAL_EXIT,
+    EPOLL_ERROR,
+    READ_ERROR,
+    WRITE_ERROR,
+    INBOUND_DISCONNECTED,
+    OUTBOUND_DISCONNECTED,
+    OUTBOUND_DISCONNECTED_SAFELY = NORMAL_EXIT,
+};
 
 struct routedata {
     struct parsed_url* out_url;
     int in_socket_fd;
     int out_websocket_fd;
     pthread_t thread;
-    bool done;
 };
 
 void* route(void* ptrrd) {
-    printf("Route thread started!\n");
-    
     // immediately copy route data, otherwise you'll get data races between main and this thread.
     struct routedata rd;
     memcpy(&rd, ptrrd, sizeof(struct routedata));
+    
+    printf("Route thread started!\n");
+    enum thread_error error = 0;
 
     // create a epoll file discriptor
     int epollfd = epoll_create1(0);
     if (epollfd < 0) {
         fprintf(stderr, "epoll_create1(): %s.\n", strerror(errno));
-        goto FAILURE;
+        error = EPOLL_ERROR;
     }
 
     // add file descriptors to the queue
@@ -71,19 +84,18 @@ void* route(void* ptrrd) {
     epolleventlocalsocket.events = EPOLLIN;
     if (epoll_ctl(epollfd, EPOLL_CTL_ADD, rd.in_socket_fd, &epolleventlocalsocket) < 0) {
         fprintf(stderr, "epoll_ctl(): %s.\n", strerror(errno));
-        goto FAILURE;
+        error = EPOLL_ERROR;
     }
 
     struct epoll_event epolleventwebsocket;
-    epolleventwebsocket.data.u32 = ROUTE_WEBSOCKET;
+    epolleventwebsocket.data.u32 = ROUTE_SERVER_WEBSOCKET_CONNECTION;
     epolleventwebsocket.events = EPOLLIN;
     if (epoll_ctl(epollfd, EPOLL_CTL_ADD, rd.out_websocket_fd, &epolleventwebsocket) < 0) {
         fprintf(stderr, "epoll_ctl(): %s.\n", strerror(errno));
-        goto FAILURE;
+        error = EPOLL_ERROR;
     }
 
-    bool loop = true;
-    while (status != SIGINT && loop) {
+    while (status != SIGINT && error == 0) {
         struct epoll_event epe[2];
         
         printf("waiting for packets...\n");
@@ -91,7 +103,7 @@ void* route(void* ptrrd) {
 
         if (fdevents < 0)  {
             fprintf(stderr, "epoll_wait(): %s.\n", strerror(errno));
-            goto FAILURE;
+            error = EPOLL_ERROR;
         } else if (fdevents == 0) {
             // not ready
         } else {
@@ -101,23 +113,24 @@ void* route(void* ptrrd) {
                     int bytesrecv = recv(rd.in_socket_fd, buffer, sizeof(buffer), 0);
 
                     if (bytesrecv < 0) {
-                        // if (bytesrecv == ECONNRESET...) {
-                        
-                        // } else {
-                            fprintf(stderr, "recv(): %s.\n", strerror(errno));
-                            goto FAILURE;
-                        // }
+                        fprintf(stderr, "recv(): %s.\n", strerror(errno));
+                        error = EPOLL_ERROR; break;
                     } else if (bytesrecv == 0) {
                         printf("inbound disconnected.\n");
 
-                        websocket_send(rd.out_websocket_fd, NULL, 0, CLOSE, true);
+                        if (websocket_send(rd.out_websocket_fd, NULL, 0, CLOSE, true)) {
+                            fprintf(stderr,"websocket_send() failed to send!");
+                            error = WRITE_ERROR; break;
+                        }
 
-                        loop = !loop;
-                        break;
+                        error = INBOUND_DISCONNECTED; break;
                     }
                     
-                    websocket_send(rd.out_websocket_fd, buffer, bytesrecv, BINARY, true);
-                } else if (epe[i].data.u32 == ROUTE_WEBSOCKET) {
+                    if (websocket_send(rd.out_websocket_fd, buffer, bytesrecv, BINARY, true)) {
+                        fprintf(stderr,"websocket_send() failed to send!");
+                        error = WRITE_ERROR; break;
+                    }
+                } else if (epe[i].data.u32 == ROUTE_SERVER_WEBSOCKET_CONNECTION) {
                     struct message msg = websocket_recv(rd.out_websocket_fd);
                     assert(msg.opcode != CONTINUATION); // should've already been handled.
                     
@@ -140,22 +153,27 @@ void* route(void* ptrrd) {
                             printf(", No close frame provided.\n");
                         }
 
-                        websocket_send(rd.out_websocket_fd, NULL, 0, CLOSE, true);
+                        if (websocket_send(rd.out_websocket_fd, NULL, 0, CLOSE, true)) {
+                            fprintf(stderr,"websocket_send() failed to send!");
+                            error = WRITE_ERROR; break;
+                        }
 
-                        loop = !loop;
                         free(msg.buffer);
-                        break;
+                        error = OUTBOUND_DISCONNECTED_SAFELY; break;
                     } else if (msg.opcode == TEXT) {
                         printf("Unsupported opcode.\n");
                     } else if (msg.opcode == PING) {
-                        websocket_send(rd.out_websocket_fd, NULL, 0, PONG, true);
+                        if (websocket_send(rd.out_websocket_fd, NULL, 0, PONG, true)) {
+                            fprintf(stderr,"websocket_send() failed to send!");
+                            error = WRITE_ERROR; break;
+                        }
                     } else if (msg.opcode == PONG) {
                         // ...
                     } else if (msg.opcode == BINARY) {
                         if (send(rd.in_socket_fd, msg.buffer, msg.size, 0) < 0) {
                             fprintf(stderr, "send(): %s.\n", strerror(errno));
                             free(msg.buffer);
-                            goto FAILURE;
+                            error = WRITE_ERROR; break;
                         }
                     }
 
@@ -166,21 +184,16 @@ void* route(void* ptrrd) {
     }
 
     printf("Route thread exiting...\n");
-    ((struct routedata*)ptrrd)->done = true;
 
+    // TODO: this would be more nicer if these were macros.
     if (close(rd.in_socket_fd) < 0 && close(rd.out_websocket_fd) < 0 && close(epollfd) < 0) {
         fprintf(stderr, "close(): %s.\n", strerror(errno));
         return (void*)EXIT_FAILURE;
     }
 
-    return (void*)EXIT_SUCCESS;
-FAILURE:
-    if (close(rd.in_socket_fd) < 0 && close(rd.out_websocket_fd) < 0 && close(epollfd) < 0) {
-        fprintf(stderr, "close(): %s.\n", strerror(errno));
-        return (void*)EXIT_FAILURE;
-    }
-
-    return (void*)EXIT_FAILURE;
+    enum thread_error* pointermemerror = malloc(sizeof(enum thread_error));
+    memcpy(pointermemerror, &error, sizeof(enum thread_error));
+    return pointermemerror;
 }
 
 int main(int argc, char *argv[]) {
@@ -271,7 +284,6 @@ int main(int argc, char *argv[]) {
     // keep constantly looking for a new connection. when we do, pass it along to a another thread to handle it.
     while (status != SIGINT) {
         threadroutes[threadroutes_total - 1] = malloc(sizeof(struct routedata));
-        threadroutes[threadroutes_total - 1]->done = false;
         threadroutes[threadroutes_total - 1]->out_url = &purl;
         threadroutes[threadroutes_total - 1]->in_socket_fd = accept(socket, NULL, NULL);
         if (threadroutes[threadroutes_total - 1]->in_socket_fd < 0) {
@@ -298,10 +310,11 @@ int main(int argc, char *argv[]) {
     }
 
     for (int i = 0; i < threadroutes_total - 1; i++) {
-        int return_val;
+        enum thread_error* return_val;
         pthread_join(threadroutes[i]->thread, (void*)&return_val);
         free(threadroutes[i]);
-        printf("Thread[%i] exited with exitcode %i\n", i, return_val);
+        printf("Thread[%i] exited with exitcode %i\n", i, *return_val);
+        free(return_val);
     }
 
     free(threadroutes);

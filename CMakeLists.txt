@@ -67,6 +67,7 @@ target_include_directories(commoninclude INTERFACE utils/common/include)
 
 # --------websocket--------
 add_library(websocket SHARED
+    websocket/status_codes.h
     websocket/opcodes.h
     websocket/websocket.c
     websocket/websocket.h

@@ -7,8 +7,8 @@
     void* new_buffer = realloc(old_buffer, newsize);                                          \
     if (new_buffer == NULL) {                                                                 \
         fprintf(stderr, "realloc(): Unknown reason.\n");                                      \
-        free(old_buffer);                                                                     \
         custom_error                                                                          \
+        free(old_buffer);                                                                     \
     } else if (old_buffer != new_buffer) {                                                    \
         old_buffer = new_buffer;                                                              \
     }                                                                                         \

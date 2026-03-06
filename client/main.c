@@ -1,6 +1,5 @@
 #include <sys/socket.h>
 #include <sys/epoll.h>
-#include <sys/poll.h>
 #include <pthread.h>
 #include <stdbool.h>
 #include <string.h>
@@ -297,10 +296,6 @@ int main(int argc, char *argv[]) {
         threadroutes[threadroutes_total - 1]->in_socket_fd = accept(socket, NULL, NULL);
         if (threadroutes[threadroutes_total - 1]->in_socket_fd < 0) {
             fprintf(stderr, "failed to accept a new connection. %s.\n", strerror(errno));
-            if (close(threadroutes[threadroutes_total - 1]->in_socket_fd)) {
-                fprintf(stderr, "close(): %s.\n", strerror(errno));
-                return_error = EXIT_FAILURE; break;
-            }
             free(threadroutes[threadroutes_total - 1]);
             continue;
         }
@@ -310,9 +305,9 @@ int main(int argc, char *argv[]) {
         threadroutes[threadroutes_total - 1]->out_websocket_fd = websocket_connect(purl);
         if (threadroutes[threadroutes_total - 1]->out_websocket_fd < 0) {
             fprintf(stderr, "failed to accept a new websocket connection.\n");
-            if (close(threadroutes[threadroutes_total - 1]->out_websocket_fd) < 0 && close(threadroutes[threadroutes_total - 1]->in_socket_fd)) {
+            if (close(threadroutes[threadroutes_total - 1]->in_socket_fd)) {
                 fprintf(stderr, "close(): %s.\n", strerror(errno));
-                return_error = EXIT_FAILURE; break;
+                free(threadroutes[threadroutes_total - 1]); return_error = EXIT_FAILURE; break;
             }
             free(threadroutes[threadroutes_total - 1]);
             continue;
@@ -320,8 +315,8 @@ int main(int argc, char *argv[]) {
 
         pthread_create(&threadroutes[threadroutes_total - 1]->thread, NULL, &route, (void*)threadroutes[threadroutes_total - 1]);
         
+        resizebuffer(threadroutes, threadroutes_total * sizeof(*threadroutes), free(threadroutes[threadroutes_total - 1]); return_error = EXIT_FAILURE; break;);
         threadroutes_total++;
-        resizebuffer(threadroutes, threadroutes_total * sizeof(*threadroutes), return_error = EXIT_FAILURE; break;);
     }
 
     for (int i = 0; i < threadroutes_total - 1; i++) {

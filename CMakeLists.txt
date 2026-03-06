@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.31.6)
-project(wsrelay VERSION 0.0.1 LANGUAGES C)
+project(wsrelay VERSION 0.0.2 LANGUAGES C)
 add_compile_definitions(__PROJECT_VERSION__="${CMAKE_PROJECT_VERSION}")
 
 include(CheckSourceCompiles)

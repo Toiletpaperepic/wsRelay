@@ -183,9 +183,9 @@ void* route(void* ptrrd) {
                         free(((struct message_data*)msg.msgdata)->buffer);
                     } else {
                         fprintf(stderr, "websocket_recv() failed to receive!\n");
-
                         if (((struct message_data*)msg.msgdata)->buffer != NULL) // unknown state but lets make sure
                             free(((struct message_data*)msg.msgdata)->buffer);
+                        error = READ_ERROR; break;
                     }
                 }
             }
@@ -297,9 +297,12 @@ int main(int argc, char *argv[]) {
         threadroutes[threadroutes_total - 1]->in_socket_fd = accept(socket, NULL, NULL);
         if (threadroutes[threadroutes_total - 1]->in_socket_fd < 0) {
             fprintf(stderr, "failed to accept a new connection. %s.\n", strerror(errno));
+            if (close(threadroutes[threadroutes_total - 1]->in_socket_fd)) {
+                fprintf(stderr, "close(): %s.\n", strerror(errno));
+                return_error = EXIT_FAILURE; break;
+            }
             free(threadroutes[threadroutes_total - 1]);
-            return_error = EXIT_FAILURE;
-            break;
+            continue;
         }
 
         // start a new websocket connection
@@ -307,9 +310,12 @@ int main(int argc, char *argv[]) {
         threadroutes[threadroutes_total - 1]->out_websocket_fd = websocket_connect(purl);
         if (threadroutes[threadroutes_total - 1]->out_websocket_fd < 0) {
             fprintf(stderr, "failed to accept a new websocket connection.\n");
+            if (close(threadroutes[threadroutes_total - 1]->out_websocket_fd) < 0 && close(threadroutes[threadroutes_total - 1]->in_socket_fd)) {
+                fprintf(stderr, "close(): %s.\n", strerror(errno));
+                return_error = EXIT_FAILURE; break;
+            }
             free(threadroutes[threadroutes_total - 1]);
-            return_error = EXIT_FAILURE;
-            break;
+            continue;
         }
 
         pthread_create(&threadroutes[threadroutes_total - 1]->thread, NULL, &route, (void*)threadroutes[threadroutes_total - 1]);

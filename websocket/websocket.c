@@ -185,83 +185,84 @@ struct message websocket_recv(int fd) {
 
     struct message msg;
     memset(&msg, 0, sizeof(struct message));
-    msg.buffer = NULL;
+    ((struct message_data*)msg.msgdata)->buffer = NULL;
     
     while (FIN != true) {
         uint8_t header[2] = {};
         if (recv(fd, header, sizeof(header), MSG_WAITALL) < 0) {
             fprintf(stderr, "recv(): %s.\n", strerror(errno));
-            exit(EXIT_FAILURE);
+            msg.error = EXIT_FAILURE; return msg;
         }
 
         FIN = (header[0] & 0b10000000) != 0;
         printf("FIN: %s\n", FIN ? "True" : "False");
 
-        assert((header[0] & 0b01110000) == 0); // fixme: we should really disconect instead of crashing the program.
-
-        // if ((byte0 & 0b01110000) != 0) {
-        //     fprintf(stderr, "RSV[1..3] has a non 0 value! Connection must be considered a FAIL!");
-        //     return EXIT_FAILURE;
-        // }
+        if ((header[0] & 0b01110000) != 0) {
+            fprintf(stderr, "RSV[1..3] has a non 0 value! Connection must be considered a FAIL!\n");
+            msg.error = EXIT_FAILURE; return msg;
+        }
 
         enum opcodes opcode = header[0] & 0b00001111;
         printf("opcode: %i\n", opcode);
 
         bool masked = (header[1] & 0b10000000) != 0;
         printf("masked: %i\n", masked);
-        assert(masked == false);
+        if (masked == true) {
+            fprintf(stderr, "Masked bit has a non 0 value! Connection must be considered a FAIL!\n");
+            msg.error = EXIT_FAILURE; return msg;
+        }
 
         uint64_t payload_size = header[1] & 0b01111111;
 
         if (payload_size == 126) {
             if (recv(fd, &payload_size, sizeof(uint16_t), 0) < 0) {
                 fprintf(stderr, "recv(): %s.\n", strerror(errno));
-                exit(EXIT_FAILURE);
+                msg.error = EXIT_FAILURE; return msg;
             }
             payload_size = be16toh(payload_size);
         }
         else if (payload_size == 127) {
             if (recv(fd, &payload_size, sizeof(uint64_t), 0) < 0) {
                 fprintf(stderr, "recv(): %s.\n", strerror(errno));
-                exit(EXIT_FAILURE);
+                msg.error = EXIT_FAILURE; return msg;
             }
             payload_size = be64toh(payload_size);
         }
 
-        printf("payload size: %lu, current buffer size: %lu\n", payload_size, msg.size);
+        printf("payload size: %lu, current buffer size: %lu\n", payload_size, ((struct message_data*)msg.msgdata)->size);
 
         if (payload_size > 0) {
-            if (msg.buffer == NULL) {
-                msg.buffer = malloc(payload_size);
+            if (((struct message_data*)msg.msgdata)->buffer == NULL) {
+                ((struct message_data*)msg.msgdata)->buffer = malloc(payload_size);
             } else {
-                printf("resizing buffer... %lu -> %lu\n", msg.size, msg.size + payload_size);
-                resizebuffer(msg.buffer, msg.size + payload_size);
+                printf("resizing buffer... %lu -> %lu\n", ((struct message_data*)msg.msgdata)->size, ((struct message_data*)msg.msgdata)->size + payload_size);
+                resizebuffer(((struct message_data*)msg.msgdata)->buffer, ((struct message_data*)msg.msgdata)->size + payload_size);
             }
             
-            if (recv(fd, msg.buffer + msg.size, payload_size, MSG_WAITALL) < 0) {
+            if (recv(fd, ((struct message_data*)msg.msgdata)->buffer + ((struct message_data*)msg.msgdata)->size, payload_size, MSG_WAITALL) < 0) {
                 fprintf(stderr, "recv(): %s.\n", strerror(errno));
-                free(msg.buffer);
-                exit(EXIT_FAILURE);
+                free(((struct message_data*)msg.msgdata)->buffer);
+                msg.error = EXIT_FAILURE; return msg;
             }
 
             printf("payload: ");
             for (int i = 0; i < payload_size; i++) {
-                printf("%X ", *(uint8_t *)(msg.buffer + msg.size + i));
+                printf("%X ", *(uint8_t *)(((struct message_data*)msg.msgdata)->buffer + ((struct message_data*)msg.msgdata)->size + i));
             }
             printf("\n");
         }
 
-        msg.size += payload_size;
-        msg.opcode = opcode;
+        ((struct message_data*)msg.msgdata)->size += payload_size;
+        ((struct message_data*)msg.msgdata)->opcode = opcode;
     }
 
     // add the end string char.
-    if (msg.opcode == TEXT) {
-        resizebuffer(msg.buffer, msg.size + 1);
-        printf("resizing buffer... %lu -> %lu\n", msg.size, msg.size + 1);
+    if (((struct message_data*)msg.msgdata)->opcode == TEXT) {
+        resizebuffer(((struct message_data*)msg.msgdata)->buffer, ((struct message_data*)msg.msgdata)->size + 1);
+        printf("resizing buffer... %lu -> %lu\n", ((struct message_data*)msg.msgdata)->size, ((struct message_data*)msg.msgdata)->size + 1);
 
         char endchar = '\0';
-        memcpy(msg.buffer + msg.size, &endchar, 1);
+        memcpy(((struct message_data*)msg.msgdata)->buffer + ((struct message_data*)msg.msgdata)->size, &endchar, 1);
     }
 
     return msg;

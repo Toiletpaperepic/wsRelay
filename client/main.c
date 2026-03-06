@@ -132,52 +132,61 @@ void* route(void* ptrrd) {
                     }
                 } else if (epe[i].data.u32 == ROUTE_SERVER_WEBSOCKET_CONNECTION) {
                     struct message msg = websocket_recv(rd.out_websocket_fd);
-                    assert(msg.opcode != CONTINUATION); // should've already been handled.
-                    
-                    if (msg.opcode == CLOSE) {
-                        printf("Websocket closed");
+                    if (!msg.error) {
+                        assert(((struct message_data*)msg.msgdata)->opcode != CONTINUATION); // should've already been handled.
                         
-                        if (msg.size > 0) {
-                            uint16_t statuscode = 0;
-                            memcpy(&statuscode, msg.buffer, sizeof(uint16_t));
-                            statuscode = be16toh(statuscode);
-                            printf(", status code: %i", statuscode);
-    
-                            char reason[msg.size - sizeof(statuscode) + 1];
-                            memcpy(reason, msg.buffer + sizeof(statuscode), msg.size - sizeof(statuscode));
-                            reason[sizeof(reason) - 1] = '\0';
-                            printf(", reason: %s\n", reason);
-                        } else if (msg.size > 123) {
-                            printf(", CloseFrame size too big! Not reading...\n");
-                        } else {
-                            printf(", No close frame provided.\n");
+                        if (((struct message_data*)msg.msgdata)->opcode == CLOSE) {
+                            printf("Websocket closed");
+                            
+                            if (((struct message_data*)msg.msgdata)->size > 0) {
+                                uint16_t statuscode = 0;
+                                memcpy(&statuscode, ((struct message_data*)msg.msgdata)->buffer, sizeof(uint16_t));
+                                statuscode = be16toh(statuscode);
+                                printf(", status code: %i", statuscode);
+        
+                                char reason[((struct message_data*)msg.msgdata)->size - sizeof(statuscode) + 1];
+                                memcpy(reason, ((struct message_data*)msg.msgdata)->buffer + sizeof(statuscode), ((struct message_data*)msg.msgdata)->size - sizeof(statuscode));
+                                reason[sizeof(reason) - 1] = '\0';
+                                printf(", reason: %s\n", reason);
+                            } else if (((struct message_data*)msg.msgdata)->size > 123) {
+                                printf(", CloseFrame size too big! Not reading...\n");
+                            } else {
+                                printf(", No close frame provided.\n");
+                            }
+
+                            if (websocket_send(rd.out_websocket_fd, NULL, 0, CLOSE, true)) {
+                                fprintf(stderr,"websocket_send() failed to send!");
+                                free(((struct message_data*)msg.msgdata)->buffer);
+                                error = WRITE_ERROR; break;
+                            }
+
+                            free(((struct message_data*)msg.msgdata)->buffer);
+                            error = OUTBOUND_DISCONNECTED_SAFELY; break;
+                        } else if (((struct message_data*)msg.msgdata)->opcode == TEXT) {
+                            printf("Unsupported opcode.\n");
+                        } else if (((struct message_data*)msg.msgdata)->opcode == PING) {
+                            if (websocket_send(rd.out_websocket_fd, NULL, 0, PONG, true)) {
+                                fprintf(stderr,"websocket_send() failed to send!");
+                                free(((struct message_data*)msg.msgdata)->buffer);
+                                error = WRITE_ERROR; break;
+                            }
+                        } else if (((struct message_data*)msg.msgdata)->opcode == PONG) {
+                            // ...
+                        } else if (((struct message_data*)msg.msgdata)->opcode == BINARY) {
+                            if (send(rd.in_socket_fd, ((struct message_data*)msg.msgdata)->buffer, ((struct message_data*)msg.msgdata)->size, 0) < 0) {
+                                fprintf(stderr, "send(): %s.\n", strerror(errno));
+                                free(((struct message_data*)msg.msgdata)->buffer);
+                                error = WRITE_ERROR; break;
+                            }
                         }
 
-                        if (websocket_send(rd.out_websocket_fd, NULL, 0, CLOSE, true)) {
-                            fprintf(stderr,"websocket_send() failed to send!");
-                            error = WRITE_ERROR; break;
-                        }
+                        free(((struct message_data*)msg.msgdata)->buffer);
+                    } else {
+                        fprintf(stderr, "websocket_recv() failed to receive!\n");
 
-                        free(msg.buffer);
-                        error = OUTBOUND_DISCONNECTED_SAFELY; break;
-                    } else if (msg.opcode == TEXT) {
-                        printf("Unsupported opcode.\n");
-                    } else if (msg.opcode == PING) {
-                        if (websocket_send(rd.out_websocket_fd, NULL, 0, PONG, true)) {
-                            fprintf(stderr,"websocket_send() failed to send!");
-                            error = WRITE_ERROR; break;
-                        }
-                    } else if (msg.opcode == PONG) {
-                        // ...
-                    } else if (msg.opcode == BINARY) {
-                        if (send(rd.in_socket_fd, msg.buffer, msg.size, 0) < 0) {
-                            fprintf(stderr, "send(): %s.\n", strerror(errno));
-                            free(msg.buffer);
-                            error = WRITE_ERROR; break;
-                        }
+                        if (((struct message_data*)msg.msgdata)->buffer != NULL) // unknown state but lets make sure
+                            free(((struct message_data*)msg.msgdata)->buffer);
                     }
-
-                    free(msg.buffer);
                 }
             }
         }

@@ -1,5 +1,5 @@
 #include <stdint.h>
-#if __WIN32__
+#if _WIN32
 #include <winsock2.h>
 #include <windows.h>
 #else

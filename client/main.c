@@ -1,4 +1,4 @@
-#if __WIN32__
+#if _WIN32
 #include <winsock2.h>
 #include <windows.h>
 #include <wepoll.h>
@@ -77,7 +77,7 @@ void* route(void* ptrrd) {
     enum thread_error error = 0;
 
     // create a epoll file discriptor
-#if __WIN32__
+#if _WIN32
     HANDLE epollfd = epoll_create1(0);
 #else
     int epollfd = epoll_create1(0);
@@ -150,7 +150,7 @@ void* route(void* ptrrd) {
                             if (((struct message_data*)msg.msgdata)->size > 0) {
                                 uint16_t statuscode = 0;
                                 memcpy(&statuscode, ((struct message_data*)msg.msgdata)->buffer, sizeof(uint16_t));
-#if __WIN32__
+#if _WIN32
                             statuscode = htons(statuscode);
 #else
                             statuscode = be16toh(statuscode);
@@ -208,7 +208,7 @@ void* route(void* ptrrd) {
     printf("Route thread exiting...\n");
     // TODO: this would be more nicer if these were macros.
     if (close(rd.in_socket_fd) < 0 && close(rd.out_websocket_fd) < 0 && 
-#if __WIN32__
+#if _WIN32
         epoll_close(epollfd)
 #else
         close(epollfd)
@@ -279,7 +279,7 @@ int main(int argc, char *argv[]) {
     printf("Starting local connection...\n");
 
 
-#if !__WIN32__
+#if !_WIN32
     struct sigaction a;
     a.sa_handler = catch_function;
     a.sa_flags = 0;
@@ -292,7 +292,7 @@ int main(int argc, char *argv[]) {
     }
 #endif
 
-#if __WIN32__
+#if _WIN32
     WSADATA wsaData;
     int err;
 
@@ -379,7 +379,7 @@ int main(int argc, char *argv[]) {
         return_error = EXIT_FAILURE;
     }
 
-#if __WIN32__
+#if _WIN32
     WSACleanup();
 #endif
 

@@ -1,4 +1,4 @@
-#ifdef __WIN32__
+#ifdef _WIN32
 #include <windows.h>
 // #include <stdio.h>
 #elif defined(__ANDROID__) && __ANDROID_API__ < 28
@@ -36,7 +36,7 @@ void make_user_agent(char** destinationstring) {
     appendchar(destinationstring, "Android");
     #elif __linux__
     appendchar(destinationstring, "Linux");
-    #elif __WIN32__
+    #elif _WIN32
     appendchar(destinationstring, "Windows");
     #else
     #warning unknown platform
@@ -69,7 +69,7 @@ void make_user_agent(char** destinationstring) {
     
     appendchar(destinationstring, "; +https://github.com/Toiletpaperepic/wsRelay/) ");
 
-#if !__WIN32__
+#if !_WIN32
     char hostname[HOST_NAME_MAX];
 #else
     char hostname[256];
@@ -114,7 +114,7 @@ const char* make_http_header(struct parsed_url purl) {
     appendchar(&message, "Sec-WebSocket-Version: 13\n");
 
     uint8_t nonce[16];
-#if __WIN32__
+#if _WIN32
     BCRYPT_ALG_HANDLE handle;
     NTSTATUS error;
 

@@ -1,4 +1,4 @@
-#if __WIN32__
+#if _WIN32
 #include <ws2tcpip.h>
 #endif
 #include <string.h>
@@ -13,7 +13,7 @@ int socket_bind(uint32_t addr, uint16_t port) {
         return -1;
     }
     
-#if !__WIN32__ 
+#if !_WIN32 
     int option = 1;
     if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &option, sizeof(int)) < 0) {
         fprintf(stderr, "setsockopt(): %s.\n", strerror(errno));

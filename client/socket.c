@@ -36,25 +36,4 @@ int socket_bind(uint32_t addr, uint16_t port) {
     }
     
     return fd;
-<<<<<<< HEAD
 }
-=======
-}
-
-bool socket_listen(int fd) {
-    if (listen(fd, 1) < 0) {
-        fprintf(stderr, "listen(): %s.\n", strerror(errno));
-        return EXIT_FAILURE;
-    }
-    return EXIT_SUCCESS;
-}
-
-int socket_accept(int fd) {
-    int connection = accept(fd, NULL, NULL);
-    if (connection < 0) {
-        fprintf(stderr, "accept(): %s.\n", strerror(errno));
-    }
-
-    return connection;
-}
->>>>>>> 4ca6852 (replace NDEBUG with __Debug__)

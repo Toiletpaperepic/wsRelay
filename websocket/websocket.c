@@ -1,4 +1,4 @@
-#ifdef _WIN32
+#if defined(_WIN32)
 #include <winsock2.h>
 #include <windows.h>
 #include <ws2tcpip.h>
@@ -41,7 +41,7 @@ int websocket_connect(struct parsed_url purl) {
     // resolve the domain name into a list of addresses
     error = getaddrinfo(purl.address, NULL, &hints, &result);
     if (error != 0) {
-#if !_WIN32
+#if !defined(_WIN32)
         if (error == EAI_SYSTEM) {
             fprintf(stderr, "getaddrinfo: %s", strerror(errno));
         } else {
@@ -139,7 +139,7 @@ int websocket_send(int fd, void* buffer, uint64_t size, enum opcodes opcode, boo
     }
 
     uint8_t maskingkey[4] = {};
-#if _WIN32
+#if defined(_WIN32)
     BCRYPT_ALG_HANDLE handle;
     NTSTATUS error;
 
@@ -175,14 +175,14 @@ int websocket_send(int fd, void* buffer, uint64_t size, enum opcodes opcode, boo
     memcpy(payload + 1, &byte1, sizeof(byte1));
 
     if (extraPayloadlength == sizeof(uint16_t)) {
-#if _WIN32
+#if defined(_WIN32)
         uint16_t size_network_order = htons(size);
 #else
         uint16_t size_network_order = htobe16(size);
 #endif
         memcpy(payload + 2, &size_network_order, extraPayloadlength);
     } else if (extraPayloadlength == sizeof(uint64_t)) {
-#if _WIN32
+#if defined(_WIN32)
         uint64_t size_network_order = htonll(size);
 #else
         uint64_t size_network_order = htobe64(size);
@@ -267,7 +267,7 @@ struct message websocket_recv(int fd) {
                 fprintf(stderr, "recv(): %s.\n", strerror(errno));
                 msg.error = EXIT_FAILURE; return msg;
             }
-#if _WIN32
+#if defined(_WIN32)
             payload_size = htonll(payload_size);
 #else
             payload_size = be64toh(payload_size);

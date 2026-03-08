@@ -69,10 +69,10 @@ void make_user_agent(char** destinationstring) {
     
     appendchar(destinationstring, "; +https://github.com/Toiletpaperepic/wsRelay/) ");
 
-#if !_WIN32
-    char hostname[HOST_NAME_MAX];
-#else
+#if _WIN32
     char hostname[256];
+#else
+    char hostname[HOST_NAME_MAX];
 #endif
     if (gethostname(hostname, sizeof(hostname)) < 0) {
         fprintf(stderr, "gethostname(): %s.\n", strerror(errno));

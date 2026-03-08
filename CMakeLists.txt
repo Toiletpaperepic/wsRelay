@@ -3,11 +3,25 @@ project(wsrelay VERSION 0.0.2 LANGUAGES C)
 add_compile_definitions(__PROJECT_VERSION__="${CMAKE_PROJECT_VERSION}")
 
 include(CheckSourceCompiles)
+include(CheckIncludeFiles)
 include(CheckSymbolExists)
-check_symbol_exists(ckd_add "stdckdint.h" HAVE_CKD_ADD)
-check_symbol_exists(ckd_mul "stdckdint.h" HAVE_CKD_MUL)
 
-if(NOT HAVE_CKD_ADD)
+set(INCLUDE_CHECK_LIST
+    # winsock2.h
+    # sys/socket.h
+    # sys/random.h
+    stdckdint.h 
+)
+
+foreach(INCLUDE IN LISTS INCLUDE_CHECK_LIST)
+    string(MAKE_C_IDENTIFIER ${INCLUDE} INCLUDE_C_IDENTIFIER)
+    string(TOUPPER ${INCLUDE_C_IDENTIFIER} INCLUDE_C_IDENTIFIER)
+    check_include_files(${INCLUDE} HAVE_${INCLUDE_C_IDENTIFIER})
+    set(HAVE_${INCLUDE_C_IDENTIFIER} ON)
+    add_compile_definitions(HAVE_${INCLUDE_C_IDENTIFIER})
+endforeach()
+
+if(NOT HAVE_STDCKDINT_H)
     check_source_compiles(C [[
         #include <stdint.h>
         int main() {
@@ -20,9 +34,10 @@ if(NOT HAVE_CKD_ADD)
         ]]
         HAVE___BUILTIN_ADD_OVERFLOW
     )
+    add_compile_definitions(HAVE___BUILTIN_ADD_OVERFLOW)
 endif()
 
-if(NOT HAVE_CKD_MUL)
+if(NOT HAVE_STDCKDINT_H)
     check_source_compiles(C [[
         #include <stdint.h>
         int main() {
@@ -35,22 +50,7 @@ if(NOT HAVE_CKD_MUL)
         ]]
         HAVE___BUILTIN_MUL_OVERFLOW
     )
-endif()
-
-if(HAVE_CKD_ADD)
-    add_compile_definitions(HAVE_CKD_ADD)
-elseif(HAVE___BUILTIN_ADD_OVERFLOW)
-    add_compile_definitions(HAVE___BUILTIN_ADD_OVERFLOW)
-else()
-    message(FATAL_ERROR "Could not find a suitable Checked Arithmetic function for addition")
-endif()
-
-if(HAVE_CKD_MUL)
-    add_compile_definitions(HAVE_CKD_MUL)
-elseif(HAVE___BUILTIN_MUL_OVERFLOW)
     add_compile_definitions(HAVE___BUILTIN_MUL_OVERFLOW)
-else()
-    message(FATAL_ERROR "Could not find a suitable Checked Arithmetic function for multiplication")
 endif()
 
 # ----------utils----------
@@ -65,15 +65,16 @@ if(WIN32)
 
     FetchContent_MakeAvailable(wepoll)
     
-    add_library(wepoll
+    add_library(wepoll SHARED
         ${wepoll_SOURCE_DIR}/wepoll.c
         ${wepoll_SOURCE_DIR}/wepoll.h
     )
 
-    find_library(WSOCK32_LIBRARY wsock32)
+    find_library(WS2_32_LIBRARY ws2_32)
 
-    target_link_libraries(wepoll PUBLIC ${WSOCK32_LIBRARY})
+    target_link_libraries(wepoll PUBLIC ${WS2_32_LIBRARY})
     target_include_directories(wepoll PUBLIC ${wepoll_SOURCE_DIR})
+    install(TARGETS wepoll LIBRARY DESTINATION lib)
 endif()
 
 add_library(base64
@@ -83,8 +84,7 @@ add_library(base64
 
 target_include_directories(base64 PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/utils/base64)
 
-add_library(commoninclude INTERFACE)
-target_include_directories(commoninclude INTERFACE utils/common/include)
+include_directories(utils/common/include)
 # -------------------------
 
 # --------websocket--------
@@ -100,9 +100,9 @@ add_library(websocket SHARED
 )
 
 target_include_directories(websocket PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/websocket)
-target_link_libraries(websocket PUBLIC base64 commoninclude)
+target_link_libraries(websocket PUBLIC base64)
 if(WIN32)
-    # find_library(WSOCK32_LIBRARY wsock32)
+    find_library(WSOCK32_LIBRARY wsock32)
     find_library(WS2_32_LIBRARY ws2_32)
     find_library(BCRYPT_LIBRARY bcrypt)
 

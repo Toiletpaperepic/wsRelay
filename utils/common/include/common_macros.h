@@ -27,3 +27,19 @@
     new_buffer = NULL;                                                                        \
 
 #endif
+
+#if defined(HAVE_STDCKDINT_H)
+#define CHECKED_ADD(R, A, B) ckd_add((R), (A), (B))
+#elif defined(HAVE___BUILTIN_ADD_OVERFLOW)
+#define CHECKED_ADD(R, A, B) __builtin_add_overflow(R, B, R)
+#else
+#error Missing implementation for Checked Arithmetic for addition!
+#endif
+
+#if defined(HAVE_STDCKDINT_H)
+#define CHECKED_MUL(R, A, B) ckd_mul((R), (A), (B))
+#elif defined(HAVE___BUILTIN_ADD_OVERFLOW)
+#define CHECKED_MUL(R, A, B) __builtin_mul_overflow(R, B, R)
+#else
+#error Missing implementation for Checked Arithmetic for multiplication!
+#endif

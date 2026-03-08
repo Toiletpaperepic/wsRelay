@@ -22,35 +22,37 @@ foreach(INCLUDE IN LISTS INCLUDE_CHECK_LIST)
     endif()    
 endforeach()
 
-if(NOT HAVE_STDCKDINT_H)
-    check_source_compiles(C [[
-        #include <stdint.h>
-        int main() {
-            int32_t a = INT32_MAX;
-            int32_t b = 1;
-            int32_t result;
-            __builtin_add_overflow(a, b, &result); 
-            return 0; 
-        }
-        ]]
-        HAVE___BUILTIN_ADD_OVERFLOW
-    )
+check_source_compiles(C [[
+    #include <stdint.h>
+    int main() {
+        int32_t a = INT32_MAX;
+        int32_t b = 1;
+        int32_t result;
+        __builtin_add_overflow(a, b, &result); 
+        return 0; 
+    }
+    ]]
+    HAVE___BUILTIN_ADD_OVERFLOW
+)
+
+check_source_compiles(C [[
+    #include <stdint.h>
+    int main() {
+        int32_t a = INT32_MAX;
+        int32_t b = 2;
+        int32_t result;
+        __builtin_mul_overflow(a, b, &result); 
+        return 0; 
+    }
+    ]]
+    HAVE___BUILTIN_MUL_OVERFLOW
+)
+
+if(HAVE___BUILTIN_ADD_OVERFLOW)
     add_compile_definitions(HAVE___BUILTIN_ADD_OVERFLOW)
 endif()
 
-if(NOT HAVE_STDCKDINT_H)
-    check_source_compiles(C [[
-        #include <stdint.h>
-        int main() {
-            int32_t a = INT32_MAX;
-            int32_t b = 2;
-            int32_t result;
-            __builtin_mul_overflow(a, b, &result); 
-            return 0; 
-        }
-        ]]
-        HAVE___BUILTIN_MUL_OVERFLOW
-    )
+if(HAVE___BUILTIN_ADD_OVERFLOW)
     add_compile_definitions(HAVE___BUILTIN_MUL_OVERFLOW)
 endif()
 

@@ -17,8 +17,8 @@
 #include <unistd.h>
 #include <errno.h>
 #include <stdio.h>
-#include "common_macros.h"
 #include "websocket.h"
+#include "common.h"
 
 void appendchar(char** destinationstring, const char* sourcestring) { 
     resizebuffer(*destinationstring, strlen(*destinationstring) + strlen(sourcestring) + 1); 

@@ -17,9 +17,9 @@
 #include <errno.h>
 #include <stdio.h>
 #define RESIZEBUFFER_CUSTOM_ERROR 1
-#include "common_macros.h"
 #include "websocket.h"
 #include "socket.h"
+#include "common.h"
 #include "http.h"
 #include "args.h"
 

@@ -7,7 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
-#include "common_macros.h"
+#include "common.h"
 #include "args.h"
 
 int32_t strtoint(const char* str) {

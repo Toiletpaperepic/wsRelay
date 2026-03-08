@@ -24,8 +24,8 @@
 #include <unistd.h>
 #include <errno.h>
 #include <stdio.h>
-#include "common_macros.h"
 #include "websocket.h"
+#include "common.h"
 #include "http.h"
 
 // https://en.wikipedia.org/wiki/WebSocket#Protocol

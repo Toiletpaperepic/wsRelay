@@ -1,4 +1,3 @@
-#include <sys/poll.h>
 #if HAVE_WINSOCK2_H
 #include <winsock2.h>
 #elif HAVE_SYS_EPOLL_H
@@ -226,7 +225,7 @@ void* route(void* ptrrd) {
             }
         }
     }
-#elif HAVE_POLL_H
+#elif HAVE_WINSOCK2_H || HAVE_POLL_H
     struct pollfd fds[2];
 
     fds[0].events = POLLIN;
@@ -236,11 +235,17 @@ void* route(void* ptrrd) {
 
     while (status != SIGINT && error == 0) {
         printf("waiting for packets...\n");
-        int pollret = poll(fds, sizeof(fds) / sizeof(struct pollfd), timeout);
+        int pollret = 
+#if HAVE_WINSOCK2_H
+        WSAPoll
+#elif HAVE_POLL_H
+        poll
+#endif
+        (fds, sizeof(fds) / sizeof(struct pollfd), timeout);
 
         if (pollret > 0) {
             for (int i = 0; i < sizeof(fds) / sizeof(struct pollfd); i++) {
-                if (fds[i].revents & POLL_IN) {
+                if (fds[i].revents & POLLIN) {
                     if (fds[i].fd == rd.in_socket_fd) {
                         enum thread_error result = inbound(rd.in_socket_fd, rd.out_websocket_fd);
                         if (result != CONTINUE) {

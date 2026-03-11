@@ -7,9 +7,11 @@ include(CheckIncludeFiles)
 include(CheckSymbolExists)
 
 set(INCLUDE_CHECK_LIST
-    # winsock2.h
-    # sys/socket.h
+    winsock2.h
+    sys/epoll.h
+    poll.h
     # sys/random.h
+    # pthread.h
     stdckdint.h 
 )
 
@@ -57,29 +59,6 @@ if(HAVE___BUILTIN_ADD_OVERFLOW)
 endif()
 
 # ----------utils----------
-if(WIN32)
-    include(FetchContent)
-
-    FetchContent_Declare(
-        wepoll
-        GIT_REPOSITORY https://github.com/piscisaureus/wepoll
-        GIT_TAG        v1.5.8
-    )
-
-    FetchContent_MakeAvailable(wepoll)
-    
-    add_library(wepoll SHARED
-        ${wepoll_SOURCE_DIR}/wepoll.c
-        ${wepoll_SOURCE_DIR}/wepoll.h
-    )
-
-    find_library(WS2_32_LIBRARY ws2_32)
-
-    target_link_libraries(wepoll PUBLIC ${WS2_32_LIBRARY})
-    target_include_directories(wepoll PUBLIC ${wepoll_SOURCE_DIR})
-    install(TARGETS wepoll LIBRARY DESTINATION lib)
-endif()
-
 add_library(base64
     utils/base64/base64.c
     utils/base64/base64.h

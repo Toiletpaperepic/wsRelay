@@ -1,10 +1,15 @@
-#if defined(_WIN32)
+#include <sys/poll.h>
+#if HAVE_WINSOCK2_H
 #include <winsock2.h>
+#elif HAVE_SYS_EPOLL_H
+#include <sys/epoll.h>
+#elif HAVE_POLL_H
+#include <poll.h>
+#endif
+#if defined(_WIN32)
 #include <windows.h>
-#include <wepoll.h>
 #else
 #include <sys/socket.h>
-#include <sys/epoll.h>
 #endif
 #include <pthread.h>
 #include <stdbool.h>
@@ -166,13 +171,11 @@ void* route(void* ptrrd) {
     
     printf("Route thread started!\n");
     enum thread_error error = 0;
+    int timeout = 1000 * 5;
 
+#if HAVE_SYS_EPOLL_H
     // create a epoll file discriptor
-#if defined(_WIN32)
-    HANDLE epollfd = epoll_create1(0);
-#else
     int epollfd = epoll_create1(0);
-#endif
     if (epollfd < 0) {
         fprintf(stderr, "epoll_create1(): %s.\n", strerror(errno));
         error = EPOLL_ERROR;
@@ -199,7 +202,7 @@ void* route(void* ptrrd) {
         struct epoll_event epe[2];
         
         printf("waiting for packets...\n");
-        int fdevents = epoll_wait(epollfd, epe, sizeof(epe) / sizeof(struct epoll_event), 1000 * 5);
+        int fdevents = epoll_wait(epollfd, epe, sizeof(epe) / sizeof(struct epoll_event), timeout);
 
         if (fdevents < 0)  {
             fprintf(stderr, "epoll_wait(): %s.\n", strerror(errno));
@@ -223,16 +226,47 @@ void* route(void* ptrrd) {
             }
         }
     }
+#elif HAVE_POLL_H
+    struct pollfd fds[2];
+
+    fds[0].events = POLLIN;
+    fds[1].events = POLLIN;
+    fds[0].fd = rd.in_socket_fd;
+    fds[1].fd = rd.out_websocket_fd;
+
+    while (status != SIGINT && error == 0) {
+        printf("waiting for packets...\n");
+        int pollret = poll(fds, sizeof(fds) / sizeof(struct pollfd), timeout);
+
+        if (pollret > 0) {
+            for (int i = 0; i < sizeof(fds) / sizeof(struct pollfd); i++) {
+                if (fds[i].revents & POLL_IN) {
+                    if (fds[i].fd == rd.in_socket_fd) {
+                        enum thread_error result = inbound(rd.in_socket_fd, rd.out_websocket_fd);
+                        if (result != CONTINUE) {
+                            error = result; break;
+                        }
+                    } else if (fds[i].fd == rd.out_websocket_fd) {
+                        enum thread_error result = outbound(rd.in_socket_fd, rd.out_websocket_fd);
+                        if (result != CONTINUE) {
+                            error = result; break;
+                        }
+                    }
+                }
+            }
+        }
+    }
+#else
+#error No implementation found!
+#endif
 
     printf("Route thread exiting...\n");
     // TODO: this would be more nicer if these were macros.
-    if (close(rd.in_socket_fd) < 0 && close(rd.out_websocket_fd) < 0 && 
-#if defined(_WIN32)
-        epoll_close(epollfd)
-#else
-        close(epollfd)
+    if (close(rd.in_socket_fd) < 0 && close(rd.out_websocket_fd) < 0  
+#if HAVE_SYS_EPOLL_H
+        && close(epollfd) < 0
 #endif
-        < 0) {
+    ) {
         fprintf(stderr, "close(): %s.\n", strerror(errno));
         return (void*)EXIT_FAILURE;
     }

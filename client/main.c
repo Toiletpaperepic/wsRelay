@@ -9,11 +9,11 @@
 #include <windows.h>
 #else
 #include <sys/socket.h>
+#include <unistd.h>
 #endif
 #include <pthread.h>
 #include <stdbool.h>
 #include <string.h>
-#include <unistd.h>
 #include <stdlib.h>
 #include <assert.h>
 #include <stdint.h>

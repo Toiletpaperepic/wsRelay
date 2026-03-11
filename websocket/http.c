@@ -1,12 +1,14 @@
 #if defined(_WIN32)
 #include <windows.h>
 // #include <stdio.h>
-#elif defined(__ANDROID__) && __ANDROID_API__ < 28
+#else 
+#if defined(__ANDROID__) && __ANDROID_API__ < 28
 #include <sys/syscall.h>
-#include <unistd.h>
 #define getrandom(buf,buflen,flags) syscall(SYS_getrandom,buf,buflen,flags)
 #else
 #include <sys/random.h>
+#endif
+#include <unistd.h>
 #endif
 #include <base64.h>
 #include <stdint.h>
@@ -14,7 +16,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <limits.h>
-#include <unistd.h>
 #include <errno.h>
 #include <stdio.h>
 #include "websocket.h"

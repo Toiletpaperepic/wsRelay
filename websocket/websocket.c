@@ -5,7 +5,6 @@
 #else
 #if defined(__ANDROID__) && __ANDROID_API__ < 28
 #include <sys/syscall.h>
-#include <unistd.h>
 #define getrandom(buf,buflen,flags) syscall(SYS_getrandom,buf,buflen,flags)
 #else
 #include <sys/random.h>
@@ -15,13 +14,13 @@
 #include <sys/types.h>
 #include <endian.h>
 #include <netdb.h>
+#include <unistd.h>
 #endif
 #include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
 #include <stdlib.h>
 #include <assert.h>
-#include <unistd.h>
 #include <errno.h>
 #include <stdio.h>
 #include "websocket.h"

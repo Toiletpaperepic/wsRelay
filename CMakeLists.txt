@@ -10,6 +10,8 @@ set(INCLUDE_CHECK_LIST
     winsock2.h
     sys/epoll.h
     poll.h
+    pthread.h
+    processthreadsapi.h
     stdckdint.h 
 )
 

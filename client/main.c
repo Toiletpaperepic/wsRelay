@@ -4,6 +4,8 @@
 #include <sys/epoll.h>
 #elif HAVE_POLL_H
 #include <poll.h>
+#else
+#error No implementation found!
 #endif
 #if defined(_WIN32)
 #include <windows.h>
@@ -11,7 +13,13 @@
 #else
 #include <sys/socket.h>
 #include <unistd.h>
+#endif
+#if HAVE_PROCESSTHREADSAPI_H
+// already included in windows.h... somewhere?
+#elif HAVE_PTHREAD_H
 #include <pthread.h>
+#else
+#error No implementation found for threading!
 #endif
 #include <stdbool.h>
 #include <string.h>
@@ -71,10 +79,10 @@ struct routedata {
     struct parsed_url* out_url;
     int in_socket_fd;
     int out_websocket_fd;
-#if defined (_WIN32)
+#if HAVE_PROCESSTHREADSAPI_H
     HANDLE ThreadHandle;
     DWORD ThreadId;
-#else
+#elif HAVE_PTHREAD_H
     pthread_t thread;
 #endif
 };
@@ -170,9 +178,9 @@ enum thread_error outbound(int in_socket_fd, int out_websocket_fd) {
     return CONTINUE;
 }
 
-#if defined (_WIN32)
+#if HAVE_PROCESSTHREADSAPI_H
 DWORD route(void* ptrrd)
-#else
+#elif HAVE_PTHREAD_H
 void* route(void* ptrrd)
 #endif
 {
@@ -284,8 +292,6 @@ void* route(void* ptrrd)
             }
         }
     }
-#else
-#error No implementation found!
 #endif
 
     printf("Route thread exiting...\n");
@@ -299,9 +305,9 @@ void* route(void* ptrrd)
         error = CLOSE_ERROR;
     }
      
-#if defined (_WIN32)
+#if HAVE_PROCESSTHREADSAPI_H
     return (DWORD)error;
-#else
+#elif HAVE_PTHREAD_H
     enum thread_error* pointermemerror = malloc(sizeof(enum thread_error));
     memcpy(pointermemerror, &error, sizeof(enum thread_error));
     return (void*)pointermemerror;
@@ -441,7 +447,7 @@ int main(int argc, char *argv[]) {
             continue;
         }
 
-#if defined (_WIN32)
+#if HAVE_PROCESSTHREADSAPI_H
         threadroutes[threadroutes_total - 1]->ThreadHandle = CreateThread(
             NULL,
             0,
@@ -450,7 +456,7 @@ int main(int argc, char *argv[]) {
             0,
             &threadroutes[threadroutes_total - 1]->ThreadId
         );
-#else
+#elif HAVE_PTHREAD_H
         pthread_create(&threadroutes[threadroutes_total - 1]->thread, NULL, &route, (void*)threadroutes[threadroutes_total - 1]);
 #endif
 
@@ -460,10 +466,10 @@ int main(int argc, char *argv[]) {
 
     for (int i = 0; i < threadroutes_total - 1; i++) {
         enum thread_error* return_val;
-#if defined (_WIN32)
+#if HAVE_PROCESSTHREADSAPI_H
         WaitForSingleObject(threadroutes[threadroutes_total - 1]->ThreadHandle, INFINITE);
         GetExitCodeThread(threadroutes[threadroutes_total - 1]->ThreadHandle, (void*)&return_val);
-#else
+#elif HAVE_PTHREAD_H
         pthread_join(threadroutes[i]->thread, (void*)&return_val);
 #endif
         free(threadroutes[i]);

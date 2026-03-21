@@ -11,8 +11,8 @@
 #else
 #include <sys/socket.h>
 #include <unistd.h>
-#endif
 #include <pthread.h>
+#endif
 #include <stdbool.h>
 #include <string.h>
 #include <stdlib.h>
@@ -60,6 +60,7 @@ enum thread_error {
     NORMAL_EXIT,
     POLL_ERROR,
     READ_ERROR,
+    CLOSE_ERROR,
     WRITE_ERROR,
     INBOUND_DISCONNECTED,
     OUTBOUND_DISCONNECTED,
@@ -70,7 +71,12 @@ struct routedata {
     struct parsed_url* out_url;
     int in_socket_fd;
     int out_websocket_fd;
+#if defined (_WIN32)
+    HANDLE ThreadHandle;
+    DWORD ThreadId;
+#else
     pthread_t thread;
+#endif
 };
 
 enum thread_error inbound(int in_socket_fd, int out_websocket_fd) {
@@ -164,7 +170,12 @@ enum thread_error outbound(int in_socket_fd, int out_websocket_fd) {
     return CONTINUE;
 }
 
-void* route(void* ptrrd) {
+#if defined (_WIN32)
+DWORD route(void* ptrrd)
+#else
+void* route(void* ptrrd)
+#endif
+{
     // immediately copy route data, otherwise you'll get data races between main and this thread.
     struct routedata rd;
     memcpy(&rd, ptrrd, sizeof(struct routedata));
@@ -178,7 +189,7 @@ void* route(void* ptrrd) {
     int epollfd = epoll_create1(0);
     if (epollfd < 0) {
         fprintf(stderr, "epoll_create1(): %s.\n", strerror(errno));
-        error = EPOLL_ERROR;
+        error = POLL_ERROR;
     }
 
     // add file descriptors to the queue
@@ -187,7 +198,7 @@ void* route(void* ptrrd) {
     epolleventlocalsocket.events = EPOLLIN;
     if (epoll_ctl(epollfd, EPOLL_CTL_ADD, rd.in_socket_fd, &epolleventlocalsocket) < 0) {
         fprintf(stderr, "epoll_ctl(): %s.\n", strerror(errno));
-        error = EPOLL_ERROR;
+        error = POLL_ERROR;
     }
 
     struct epoll_event epolleventwebsocket;
@@ -195,7 +206,7 @@ void* route(void* ptrrd) {
     epolleventwebsocket.events = EPOLLIN;
     if (epoll_ctl(epollfd, EPOLL_CTL_ADD, rd.out_websocket_fd, &epolleventwebsocket) < 0) {
         fprintf(stderr, "epoll_ctl(): %s.\n", strerror(errno));
-        error = EPOLL_ERROR;
+        error = POLL_ERROR;
     }
 
     while (status != SIGINT && error == 0) {
@@ -206,7 +217,7 @@ void* route(void* ptrrd) {
 
         if (fdevents < 0)  {
             fprintf(stderr, "epoll_wait(): %s.\n", strerror(errno));
-            error = EPOLL_ERROR;
+            error = POLL_ERROR;
         } else if (fdevents == 0) {
             // not ready
         } else {
@@ -285,12 +296,16 @@ void* route(void* ptrrd) {
 #endif
     ) {
         fprintf(stderr, "close(): %s.\n", strerror(errno));
-        return (void*)EXIT_FAILURE;
+        error = CLOSE_ERROR;
     }
-
+     
+#if defined (_WIN32)
+    return (DWORD)error;
+#else
     enum thread_error* pointermemerror = malloc(sizeof(enum thread_error));
     memcpy(pointermemerror, &error, sizeof(enum thread_error));
-    return pointermemerror;
+    return (void*)pointermemerror;
+#endif
 }
 
 int main(int argc, char *argv[]) {
@@ -426,15 +441,31 @@ int main(int argc, char *argv[]) {
             continue;
         }
 
+#if defined (_WIN32)
+        threadroutes[threadroutes_total - 1]->ThreadHandle = CreateThread(
+            NULL,
+            0,
+            route,
+            (void*)threadroutes[threadroutes_total - 1],
+            0,
+            &threadroutes[threadroutes_total - 1]->ThreadId
+        );
+#else
         pthread_create(&threadroutes[threadroutes_total - 1]->thread, NULL, &route, (void*)threadroutes[threadroutes_total - 1]);
-        
+#endif
+
         resizebuffer(threadroutes, threadroutes_total * sizeof(*threadroutes), free(threadroutes[threadroutes_total - 1]); return_error = EXIT_FAILURE; break;);
         threadroutes_total++;
     }
 
     for (int i = 0; i < threadroutes_total - 1; i++) {
         enum thread_error* return_val;
+#if defined (_WIN32)
+        WaitForSingleObject(threadroutes[threadroutes_total - 1]->ThreadHandle, INFINITE);
+        GetExitCodeThread(threadroutes[threadroutes_total - 1]->ThreadHandle, (void*)&return_val);
+#else
         pthread_join(threadroutes[i]->thread, (void*)&return_val);
+#endif
         free(threadroutes[i]);
         printf("Thread[%i] exited with exitcode %i\n", i, *return_val);
         free(return_val);

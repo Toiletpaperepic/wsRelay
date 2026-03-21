@@ -7,6 +7,7 @@
 #endif
 #if defined(_WIN32)
 #include <windows.h>
+#include <io.h>
 #else
 #include <sys/socket.h>
 #include <unistd.h>
@@ -57,7 +58,7 @@ enum connection_type {
 enum thread_error {
     CONTINUE,
     NORMAL_EXIT,
-    EPOLL_ERROR,
+    POLL_ERROR,
     READ_ERROR,
     WRITE_ERROR,
     INBOUND_DISCONNECTED,
@@ -78,7 +79,7 @@ enum thread_error inbound(int in_socket_fd, int out_websocket_fd) {
 
     if (bytesrecv < 0) {
         fprintf(stderr, "recv(): %s.\n", strerror(errno));
-        return EPOLL_ERROR;
+        return READ_ERROR;
     } else if (bytesrecv == 0) {
         printf("inbound disconnected.\n");
 
@@ -243,7 +244,18 @@ void* route(void* ptrrd) {
 #endif
         (fds, sizeof(fds) / sizeof(struct pollfd), timeout);
 
-        if (pollret > 0) {
+        if (pollret < 0) {
+            fprintf(stderr, 
+#if HAVE_WINSOCK2_H
+                "WSAPoll(): %s.\n"
+#elif HAVE_POLL_H
+                "poll(): %s.\n"
+#endif
+                , strerror(errno));
+            error = POLL_ERROR;
+        } else if (pollret == 0) {
+            // not ready
+        } else  {
             for (int i = 0; i < sizeof(fds) / sizeof(struct pollfd); i++) {
                 if (fds[i].revents & POLLIN) {
                     if (fds[i].fd == rd.in_socket_fd) {

@@ -2,6 +2,7 @@
 #include <winsock2.h>
 #include <windows.h>
 #include <ws2tcpip.h>
+#include <io.h>
 #else
 #if defined(__ANDROID__) && __ANDROID_API__ < 28
 #include <sys/syscall.h>

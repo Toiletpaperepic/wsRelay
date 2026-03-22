@@ -7,7 +7,6 @@ include(CheckIncludeFiles)
 include(CheckSymbolExists)
 
 set(INCLUDE_CHECK_LIST
-    winsock2.h
     sys/epoll.h
     poll.h
     pthread.h
@@ -15,6 +14,7 @@ set(INCLUDE_CHECK_LIST
 )
 
 foreach(INCLUDE IN LISTS INCLUDE_CHECK_LIST)
+    # message(STATUS "${INCLUDE}")
     string(MAKE_C_IDENTIFIER ${INCLUDE} INCLUDE_C_IDENTIFIER)
     string(TOUPPER ${INCLUDE_C_IDENTIFIER} INCLUDE_C_IDENTIFIER)
     check_include_files(${INCLUDE} HAVE_${INCLUDE_C_IDENTIFIER})
@@ -23,18 +23,21 @@ foreach(INCLUDE IN LISTS INCLUDE_CHECK_LIST)
     endif()
 endforeach()
 
-set(SYMBOL_CHECK_LIST
-    CreateThread
-)
+set(SYMBOL_CHECK_LIST CreateThread WSAPoll)
+set(SYMBOL_HEADER_CHECK_LIST windows.h winsock2.h)
+set(SYMBOL_REQUIRED_LIBRARY_LIST NONE ws2_32)
 
-set(SYMBOL_HEADER_CHECK_LIST
-    windows.h
-)
-
-foreach(SYMBOL INCLUDE IN ZIP_LISTS SYMBOL_CHECK_LIST SYMBOL_HEADER_CHECK_LIST)
+foreach(SYMBOL INCLUDE LIBRARY IN ZIP_LISTS SYMBOL_CHECK_LIST SYMBOL_HEADER_CHECK_LIST SYMBOL_REQUIRED_LIBRARY_LIST)
+    # message(STATUS "${SYMBOL} ${INCLUDE}")
     string(MAKE_C_IDENTIFIER ${SYMBOL} INCLUDE_C_IDENTIFIER)
     string(TOUPPER ${INCLUDE_C_IDENTIFIER} INCLUDE_C_IDENTIFIER)
-    check_symbol_exists(${SYMBOL} ${INCLUDE} HAVE_${INCLUDE_C_IDENTIFIER})
+    if(NOT "NONE" STREQUAL ${LIBRARY})
+        set(CMAKE_REQUIRED_LIBRARIES ${LIBRARY})
+        check_symbol_exists(${SYMBOL} ${INCLUDE} HAVE_${INCLUDE_C_IDENTIFIER})
+        unset(CMAKE_REQUIRED_LIBRARIES)
+    else()
+        check_symbol_exists(${SYMBOL} ${INCLUDE} HAVE_${INCLUDE_C_IDENTIFIER})
+    endif()
     if(HAVE_${INCLUDE_C_IDENTIFIER})
         add_compile_definitions(HAVE_${INCLUDE_C_IDENTIFIER})
     endif()

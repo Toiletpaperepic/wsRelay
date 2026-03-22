@@ -45,8 +45,17 @@ void make_user_agent(char** destinationstring) {
     #endif
     
     appendchar(destinationstring, ";");
-    
+    #if defined(_MSC_VER)
     #if defined(__clang__)
+    appendchar(destinationstring, " MSVC ");
+    appendchar(destinationstring, "(clang ");
+    appendchar(destinationstring, __clang_version__);
+    appendchar(destinationstring, ")");
+    #else
+    appendchar(destinationstring, " MSVC");
+    //appendchar(destinationstring, _MSC_FULL_VER);
+    #endif
+    #elif defined(__clang__)
     appendchar(destinationstring, " clang ");
     appendchar(destinationstring, __clang_version__);
     #elif defined(__GNUC__)

@@ -87,14 +87,16 @@ include_directories(utils/common/include)
 
 # --------websocket--------
 add_library(websocket SHARED
-    websocket/status_codes.h
-    websocket/opcodes.h
-    websocket/websocket.c
-    websocket/websocket.h
-    websocket/parse_url.c
-    websocket/parse_url.h
+    websocket/dll_export.h
     websocket/http.c
     websocket/http.h
+    websocket/opcodes.h
+    websocket/parse_url.c
+    websocket/parse_url.h
+    websocket/status_codes.h
+    websocket/websocket.c
+    websocket/websocket.h
+    websocket/wsrelay.h
 )
 
 target_include_directories(websocket PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/websocket)

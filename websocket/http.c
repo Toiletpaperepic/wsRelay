@@ -18,7 +18,7 @@
 #include <limits.h>
 #include <errno.h>
 #include <stdio.h>
-#include "websocket.h"
+#include "wsrelay.h"
 #include "common.h"
 
 void appendchar(char** destinationstring, const char* sourcestring) { 

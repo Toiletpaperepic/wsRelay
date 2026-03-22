@@ -24,9 +24,8 @@
 #include <assert.h>
 #include <errno.h>
 #include <stdio.h>
-#include "websocket.h"
+#include "wsrelay.h"
 #include "common.h"
-#include "http.h"
 
 // https://en.wikipedia.org/wiki/WebSocket#Protocol
 
@@ -100,7 +99,7 @@ int websocket_connect(struct parsed_url purl) {
     free((void*)message);
 
     char buffer[1024] = {};
-    ssize_t size = recv(fd, buffer, sizeof(buffer), 0);
+    int size = recv(fd, buffer, sizeof(buffer), 0);
     if (size < 0) {
         fprintf(stderr, "recv(): %s.\n", strerror(errno));
         return -1;

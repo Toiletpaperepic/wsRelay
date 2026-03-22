@@ -12,7 +12,7 @@
 #elif HAVE_PTHREAD_H
 #include <pthread.h>
 #else
-#error No implementation found for threading!
+#error No implementation found for multithreading!
 #endif
 #if defined(_WIN32)
 #include <windows.h>
@@ -30,10 +30,9 @@
 #include <errno.h>
 #include <stdio.h>
 #define RESIZEBUFFER_CUSTOM_ERROR 1
-#include "websocket.h"
+#include "wsrelay.h"
 #include "socket.h"
 #include "common.h"
-#include "http.h"
 #include "args.h"
 
 volatile sig_atomic_t status = 0;

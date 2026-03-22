@@ -1,3 +1,4 @@
+#include "dll_export.h"
 #include <stdint.h>
 
 enum protocol_type {
@@ -13,4 +14,4 @@ struct parsed_url {
     const char* path;
 };
 
-struct parsed_url parse_url(const char* url);
+DLL_EXPORT struct parsed_url parse_url(const char* url);

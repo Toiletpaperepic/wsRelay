@@ -7,19 +7,19 @@
 #else
 #error No implementation found!
 #endif
+#if HAVE_CREATETHREAD
+// already included in windows.h... somewhere?
+#elif HAVE_PTHREAD_H
+#include <pthread.h>
+#else
+#error No implementation found for threading!
+#endif
 #if defined(_WIN32)
 #include <windows.h>
 #include <io.h>
 #else
 #include <sys/socket.h>
 #include <unistd.h>
-#endif
-#if HAVE_PROCESSTHREADSAPI_H
-// already included in windows.h... somewhere?
-#elif HAVE_PTHREAD_H
-#include <pthread.h>
-#else
-#error No implementation found for threading!
 #endif
 #include <stdbool.h>
 #include <string.h>
@@ -79,7 +79,7 @@ struct routedata {
     struct parsed_url* out_url;
     int in_socket_fd;
     int out_websocket_fd;
-#if HAVE_PROCESSTHREADSAPI_H
+#if HAVE_CREATETHREAD
     HANDLE ThreadHandle;
     DWORD ThreadId;
 #elif HAVE_PTHREAD_H
@@ -178,7 +178,7 @@ enum thread_error outbound(int in_socket_fd, int out_websocket_fd) {
     return CONTINUE;
 }
 
-#if HAVE_PROCESSTHREADSAPI_H
+#if HAVE_CREATETHREAD
 DWORD route(void* ptrrd)
 #elif HAVE_PTHREAD_H
 void* route(void* ptrrd)
@@ -305,7 +305,7 @@ void* route(void* ptrrd)
         error = CLOSE_ERROR;
     }
      
-#if HAVE_PROCESSTHREADSAPI_H
+#if HAVE_CREATETHREAD
     return (DWORD)error;
 #elif HAVE_PTHREAD_H
     enum thread_error* pointermemerror = malloc(sizeof(enum thread_error));
@@ -447,7 +447,7 @@ int main(int argc, char *argv[]) {
             continue;
         }
 
-#if HAVE_PROCESSTHREADSAPI_H
+#if HAVE_CREATETHREAD
         threadroutes[threadroutes_total - 1]->ThreadHandle = CreateThread(
             NULL,
             0,
@@ -466,7 +466,7 @@ int main(int argc, char *argv[]) {
 
     for (int i = 0; i < threadroutes_total - 1; i++) {
         enum thread_error* return_val;
-#if HAVE_PROCESSTHREADSAPI_H
+#if HAVE_CREATETHREAD
         WaitForSingleObject(threadroutes[threadroutes_total - 1]->ThreadHandle, INFINITE);
         GetExitCodeThread(threadroutes[threadroutes_total - 1]->ThreadHandle, (void*)&return_val);
 #elif HAVE_PTHREAD_H

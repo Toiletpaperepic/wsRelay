@@ -11,7 +11,6 @@ set(INCLUDE_CHECK_LIST
     sys/epoll.h
     poll.h
     pthread.h
-    processthreadsapi.h
     stdckdint.h 
 )
 
@@ -21,7 +20,24 @@ foreach(INCLUDE IN LISTS INCLUDE_CHECK_LIST)
     check_include_files(${INCLUDE} HAVE_${INCLUDE_C_IDENTIFIER})
     if(HAVE_${INCLUDE_C_IDENTIFIER})
         add_compile_definitions(HAVE_${INCLUDE_C_IDENTIFIER})
-    endif()    
+    endif()
+endforeach()
+
+set(SYMBOL_CHECK_LIST
+    CreateThread
+)
+
+set(SYMBOL_HEADER_CHECK_LIST
+    windows.h
+)
+
+foreach(SYMBOL INCLUDE IN ZIP_LISTS SYMBOL_CHECK_LIST SYMBOL_HEADER_CHECK_LIST)
+    string(MAKE_C_IDENTIFIER ${SYMBOL} INCLUDE_C_IDENTIFIER)
+    string(TOUPPER ${INCLUDE_C_IDENTIFIER} INCLUDE_C_IDENTIFIER)
+    check_symbol_exists(${SYMBOL} ${INCLUDE} HAVE_${INCLUDE_C_IDENTIFIER})
+    if(HAVE_${INCLUDE_C_IDENTIFIER})
+        add_compile_definitions(HAVE_${INCLUDE_C_IDENTIFIER})
+    endif()
 endforeach()
 
 check_source_compiles(C [[

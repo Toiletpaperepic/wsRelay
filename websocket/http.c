@@ -63,11 +63,11 @@ void make_user_agent(char** destinationstring) {
     #elif defined(__GNUC__)
     appendchar(destinationstring, " gcc ");
     appendchar(destinationstring, __VERSION__);
-    #if defined(__MINGW64__) || defined(__MINGW32__)
+    #if defined(__MINGW64__) && defined(__MINGW32__)
     appendchar(destinationstring, " (Mingw-w64)");
-    #elif !defined(__MINGW64__) || defined(__MINGW32__)
+    #elif !defined(__MINGW64__) && defined(__MINGW32__)
     // appendchar(destinationstring, " (Mingw)");
-    #error Legacy compiler detected! Please use mingw-w64 (https://www.mingw-w64.org/)
+    #error "Legacy compiler detected! Please use mingw-w64 (https://www.mingw-w64.org/)"
     #endif
     #else
     #warning unknown compiler

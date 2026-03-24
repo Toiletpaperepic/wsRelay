@@ -29,40 +29,40 @@ void make_user_agent(char** destinationstring) {
     appendchar(destinationstring, " ("); 
     
     // TODO: create USER_AGENT_LESS_INFO env
-    #if __ANDROID__
+#if __ANDROID__
     appendchar(destinationstring, "Android");
-    #elif __linux__
+#elif __linux__
     appendchar(destinationstring, "Linux");
-    #elif __WIN32__
+#elif __WIN32__
     appendchar(destinationstring, "Windows");
-    #else
-    #warning unknown platform
+#else
+#warning unknown platform
     appendchar(destinationstring, "unknown platform");
-    #endif
+#endif
     
     appendchar(destinationstring, ";");
     
-    #if defined(__clang__)
+#if defined(__clang__)
     appendchar(destinationstring, " clang ");
     appendchar(destinationstring, __clang_version__);
-    #elif defined(__GNUC__)
+#elif defined(__GNUC__)
     appendchar(destinationstring, " gcc ");
     appendchar(destinationstring, __VERSION__);
-    #else
-    #warning unknown compiler
+#else
+#warning unknown compiler
     appendchar(destinationstring, " unknown compiler");
-    #endif
+#endif
     
     appendchar(destinationstring, ";");
     
-    #if __x86_64__
+#if __x86_64__
     appendchar(destinationstring, " x86_64");
-    #elif __aarch64__
+#elif __aarch64__
     appendchar(destinationstring, " aarch64");
-    #else
-    #warning unknown arch
+#else
+#warning unknown arch
     appendchar(destinationstring, " unknown arch");
-    #endif
+#endif
     
     appendchar(destinationstring, "; +https://github.com/Toiletpaperepic/wsRelay/) ");
     

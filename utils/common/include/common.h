@@ -1,5 +1,9 @@
-#ifndef RESIZEBUFFER_CUSTOM_ERROR
+#if !defined(RESIZEBUFFER_CUSTOM_ERROR)
 #define RESIZEBUFFER_CUSTOM_ERROR 0
+#endif
+
+#if !defined(CHECKED_ARITHMETIC)
+#define CHECKED_ARITHMETIC 0
 #endif
 
 #if RESIZEBUFFER_CUSTOM_ERROR
@@ -28,18 +32,17 @@
 
 #endif
 
-#if defined(HAVE_STDCKDINT_H)
+#if CHECKED_ARITHMETIC
+#if HAVE_STDCKDINT_H
+#include <stdckdint.h>
 #define CHECKED_ADD(R, A, B) ckd_add((R), (A), (B))
-#elif defined(HAVE___BUILTIN_ADD_OVERFLOW)
-#define CHECKED_ADD(R, A, B) __builtin_add_overflow(A, B, R)
-#else
-#error Missing implementation for Checked Arithmetic for addition!
-#endif
-
-#if defined(HAVE_STDCKDINT_H)
 #define CHECKED_MUL(R, A, B) ckd_mul((R), (A), (B))
-#elif defined(HAVE___BUILTIN_ADD_OVERFLOW)
+#elif defined(HAVE___BUILTIN_ADD_OVERFLOW) && defined(HAVE___BUILTIN_ADD_OVERFLOW)
+#define CHECKED_ADD(R, A, B) __builtin_add_overflow((A), (B), (R))
 #define CHECKED_MUL(R, A, B) __builtin_mul_overflow((A), (B), (R))
 #else
-#error Missing implementation for Checked Arithmetic for multiplication!
+#include <jtckdint.h>
+#define CHECKED_ADD(R, A, B) ckd_add((R), (A), (B))
+#define CHECKED_MUL(R, A, B) ckd_mul((R), (A), (B))
+#endif
 #endif

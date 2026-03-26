@@ -1,12 +1,10 @@
-#if HAVE_STDCKDINT_H
-#include <stdckdint.h>
-#endif
 #include <stdbool.h>
 #include <assert.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#define CHECKED_ARITHMETIC 1
 #include "common.h"
 #include "args.h"
 

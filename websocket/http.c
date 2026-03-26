@@ -35,9 +35,9 @@ void make_user_agent(char** destinationstring) {
     // https://sourceforge.net/p/predef/wiki/Home/
     
     // TODO: create USER_AGENT_LESS_INFO env
-#if __ANDROID__
+#if defined(__ANDROID__)
     appendchar(destinationstring, "Android");
-#elif __linux__
+#elif defined(__linux__)
     appendchar(destinationstring, "Linux");
 #elif defined(_WIN32)
     appendchar(destinationstring, "Windows");
@@ -76,9 +76,9 @@ void make_user_agent(char** destinationstring) {
     
     appendchar(destinationstring, ";");
     
-#if __x86_64__
+#if defined(__x86_64__) || defined(_M_AMD64)
     appendchar(destinationstring, " x86_64");
-#elif __aarch64__
+#elif defined(__aarch64__) || defined(_M_ARM64)
     appendchar(destinationstring, " aarch64");
 #else
 #warning unknown arch
@@ -95,7 +95,6 @@ void make_user_agent(char** destinationstring) {
     if (gethostname(hostname, sizeof(hostname)) < 0) {
         fprintf(stderr, "gethostname(): %s.\n", strerror(errno));
     } else {
-    
         appendchar(destinationstring, "Hostname/");
         appendchar(destinationstring, hostname);
     }

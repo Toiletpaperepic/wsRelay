@@ -293,7 +293,7 @@ struct message websocket_recv(int fd) {
 
             printf("payload: ");
             for (int i = 0; i < payload_size; i++) {
-                printf("%X ", *(uint8_t *)(((struct message_data*)msg.msgdata)->buffer) + ((struct message_data*)msg.msgdata)->size + i);
+                printf("%X ", *(uint8_t *)((uint8_t *)((struct message_data*)msg.msgdata)->buffer + ((struct message_data*)msg.msgdata)->size + i));
             }
             printf("\n");
         }

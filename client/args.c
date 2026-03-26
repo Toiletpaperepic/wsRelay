@@ -1,12 +1,11 @@
-#if HAVE_CKD_ADD || HAVE_CKD_MUL 
-#include <stdckdint.h>
-#endif
 #include <stdbool.h>
 #include <assert.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#define CHECKED_ARITHMETIC 1
+#include "common.h"
 #include "args.h"
 
 int32_t strtoint(const char* str) {
@@ -17,17 +16,9 @@ int32_t strtoint(const char* str) {
             if (str[i] >= 48 && str[i] <= 57) {
                 int32_t result = 0;
                 
-#if HAVE_CKD_MUL
-                if (ckd_mul(&result, num, 10))
-#elif HAVE___BUILTIN_MUL_OVERFLOW
-                if (__builtin_mul_overflow(num, 10, &result))
-#endif
+                if (CHECKED_MUL(&result, num, 10))
                     return INT32_MAX;
-#if HAVE_CKD_ADD
-                if (ckd_add(&result, result, str[i] - 48))
-#elif HAVE___BUILTIN_ADD_OVERFLOW
-                if (__builtin_add_overflow(result, str[i] - 48, &result))
-#endif
+                if (CHECKED_ADD(&result, result, str[i] - 48))
                     return INT32_MAX;
 
                 num = result;
@@ -42,17 +33,9 @@ int32_t strtoint(const char* str) {
             if (str[i] >= 48 && str[i] <= 57) {
                 int32_t result = 0;
                 
-#if HAVE_CKD_MUL
-                if (ckd_mul(&result, num, 10))
-#elif HAVE___BUILTIN_MUL_OVERFLOW
-                if (__builtin_mul_overflow(num, 10, &result))
-#endif
+                if (CHECKED_MUL(&result, num, 10))
                     return INT32_MAX;
-#if HAVE_CKD_ADD
-                if (ckd_add(&result, result, str[i] - 48))
-#elif HAVE___BUILTIN_ADD_OVERFLOW
-                if (__builtin_add_overflow(result, str[i] - 48, &result))
-#endif
+                if (CHECKED_ADD(&result, result, str[i] - 48))
                     return INT32_MAX;
 
                 num = result;
@@ -72,18 +55,10 @@ uint32_t strtouint(const char* str) {
     for (int i = 0; str[i] != '\0'; i++) {
         if (str[i] >= 48 && str[i] <= 57) {
             uint32_t result = 0;
-                
-#if HAVE_CKD_MUL
-                if (ckd_mul(&result, num, 10))
-#elif HAVE___BUILTIN_MUL_OVERFLOW
-                if (__builtin_mul_overflow(num, 10, &result))
-#endif
+
+            if (CHECKED_MUL(&result, num, 10))
                 return UINT32_MAX;
-#if HAVE_CKD_ADD
-                if (ckd_add(&result, result, str[i] - 48))
-#elif HAVE___BUILTIN_ADD_OVERFLOW
-                if (__builtin_add_overflow(result, str[i] - 48, &result))
-#endif
+            if (CHECKED_ADD(&result, result, str[i] - 48))
                 return UINT32_MAX;
 
             num = result;
@@ -127,8 +102,8 @@ bool parse_args(int argc, char *argv[], struct Argument* registerargs, bool igno
         struct Argument* nextarg = registerargs;
 
         while (true) {
-            char dashdashname[3 + strlen(nextarg->name)] = {};
-            memcpy(dashdashname, "--", sizeof("--"));
+            char* dashdashname = malloc(3 + strlen(nextarg->name));
+            memcpy(dashdashname, "--", sizeof("--")); // there isn't a null terminator in dashdashname so we can't use strcat() just yet.
             strcat(dashdashname, nextarg->name);
 
             if (strcmp(dashdashname, argv[i]) == 0) {
@@ -170,6 +145,9 @@ bool parse_args(int argc, char *argv[], struct Argument* registerargs, bool igno
 
                 break;
             }
+
+            free(dashdashname);
+
             if (nextarg->next == NULL) {
                 if (ignore_unknowns) {
                     return false;

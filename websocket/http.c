@@ -1,21 +1,25 @@
+#if defined(_WIN32)
+#include <windows.h>
+// #include <stdio.h>
+#else 
+#if defined(__ANDROID__) && __ANDROID_API__ < 28
+#include <sys/syscall.h>
+#define getrandom(buf,buflen,flags) syscall(SYS_getrandom,buf,buflen,flags)
+#else
 #include <sys/random.h>
+#endif
+#include <unistd.h>
+#endif
 #include <base64.h>
 #include <stdint.h>
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
 #include <limits.h>
-#include <unistd.h>
 #include <errno.h>
 #include <stdio.h>
-#include "common_macros.h"
-#include "websocket.h"
-
-#if defined(__ANDROID__) && __ANDROID_API__ < 28
-#include <sys/syscall.h>
-#include <unistd.h>
-#define getrandom(buf,buflen,flags) syscall(SYS_getrandom,buf,buflen,flags)
-#endif
+#include "wsrelay.h"
+#include "common.h"
 
 void appendchar(char** destinationstring, const char* sourcestring) { 
     resizebuffer(*destinationstring, strlen(*destinationstring) + strlen(sourcestring) + 1); 
@@ -27,13 +31,15 @@ void make_user_agent(char** destinationstring) {
     appendchar(destinationstring, "User-Agent: wsrRelay/");
     appendchar(destinationstring, __PROJECT_VERSION__);
     appendchar(destinationstring, " ("); 
+
+    // https://sourceforge.net/p/predef/wiki/Home/
     
     // TODO: create USER_AGENT_LESS_INFO env
-#if __ANDROID__
+#if defined(__ANDROID__)
     appendchar(destinationstring, "Android");
-#elif __linux__
+#elif defined(__linux__)
     appendchar(destinationstring, "Linux");
-#elif __WIN32__
+#elif defined(_WIN32)
     appendchar(destinationstring, "Windows");
 #else
 #warning unknown platform
@@ -41,13 +47,28 @@ void make_user_agent(char** destinationstring) {
 #endif
     
     appendchar(destinationstring, ";");
-    
+#if defined(_MSC_VER)
 #if defined(__clang__)
+    appendchar(destinationstring, " MSVC ");
+    appendchar(destinationstring, "(clang ");
+    appendchar(destinationstring, __clang_version__);
+    appendchar(destinationstring, ")");
+#else
+    appendchar(destinationstring, " MSVC");
+    //appendchar(destinationstring, _MSC_FULL_VER);
+#endif
+#elif defined(__clang__)
     appendchar(destinationstring, " clang ");
     appendchar(destinationstring, __clang_version__);
 #elif defined(__GNUC__)
     appendchar(destinationstring, " gcc ");
     appendchar(destinationstring, __VERSION__);
+#if defined(__MINGW64__) && defined(__MINGW32__)
+    appendchar(destinationstring, " (Mingw-w64)");
+#elif !defined(__MINGW64__) && defined(__MINGW32__)
+    // appendchar(destinationstring, " (Mingw)");
+#error "Legacy compiler detected! Please use mingw-w64 (https://www.mingw-w64.org/)"
+#endif
 #else
 #warning unknown compiler
     appendchar(destinationstring, " unknown compiler");
@@ -55,9 +76,9 @@ void make_user_agent(char** destinationstring) {
     
     appendchar(destinationstring, ";");
     
-#if __x86_64__
+#if defined(__x86_64__) || defined(_M_AMD64)
     appendchar(destinationstring, " x86_64");
-#elif __aarch64__
+#elif defined(__aarch64__) || defined(_M_ARM64)
     appendchar(destinationstring, " aarch64");
 #else
 #warning unknown arch
@@ -65,12 +86,15 @@ void make_user_agent(char** destinationstring) {
 #endif
     
     appendchar(destinationstring, "; +https://github.com/Toiletpaperepic/wsRelay/) ");
-    
+
+#if defined(_WIN32)
+    char hostname[256];
+#else
     char hostname[HOST_NAME_MAX];
+#endif
     if (gethostname(hostname, sizeof(hostname)) < 0) {
         fprintf(stderr, "gethostname(): %s.\n", strerror(errno));
     } else {
-    
         appendchar(destinationstring, "Hostname/");
         appendchar(destinationstring, hostname);
     }
@@ -107,7 +131,30 @@ const char* make_http_header(struct parsed_url purl) {
     appendchar(&message, "Sec-WebSocket-Version: 13\n");
 
     uint8_t nonce[16];
+#if defined(_WIN32)
+    BCRYPT_ALG_HANDLE handle;
+    NTSTATUS error;
+
+    error = BCryptOpenAlgorithmProvider(&handle, BCRYPT_RNG_ALGORITHM,NULL,0);
+    if (!BCRYPT_SUCCESS(error)) {
+        fprintf(stderr, "BCryptOpenAlgorithmProvider(): %lX.\n", error);
+        exit(EXIT_FAILURE);
+    }
+    
+    error = BCryptGenRandom(handle, (PUCHAR)nonce, sizeof(nonce), 0);
+    if (!BCRYPT_SUCCESS(error)) {
+        fprintf(stderr, "BCryptGenRandom(): %lX.\n", error);
+        exit(EXIT_FAILURE);
+    }
+    
+    error = BCryptCloseAlgorithmProvider(handle,0);
+    if (!BCRYPT_SUCCESS(error)) {
+        fprintf(stderr, "BCryptCloseAlgorithmProvider(): %lX.\n", error);
+        exit(EXIT_FAILURE);
+    }
+#else
     getrandom(&nonce, sizeof(nonce), 0);
+#endif
     const char* key = base64_encode_no_lf(&nonce, sizeof(nonce), NULL);
 
     assert(strlen(key) == 24);

@@ -8,10 +8,8 @@ struct parsed_url parse_url(const char* url) {
     int cursor = 0;
     
     for (int i = 0; i < strlen(url); i++) {
-        // printf("%c\n", url[i]);
-        
         if (url[i] == ':') {
-            char protocol[i + 1];
+            char* protocol = malloc(i + 1);
             strncpy(protocol, url, i);
             protocol[i] = '\0';
 
@@ -22,6 +20,8 @@ struct parsed_url parse_url(const char* url) {
             } else {
                 purl.protocol = unknown;
             }
+
+            free(protocol);
 
             cursor = i;
             break;
@@ -37,11 +37,9 @@ struct parsed_url parse_url(const char* url) {
         // printf("%c\n", url[i]);
         
         if (url[i] == ':' || url[i] == '/') {
-            char address[i - cursor + 1];
-            strncpy(address, url + cursor, i - cursor);
-            address[i - cursor] = '\0';
-
-            purl.address = strdup(address);
+            purl.address = malloc(i - cursor + 1);
+            strncpy(purl.address, url + cursor, i - cursor);
+            purl.address[i - cursor] = '\0';
 
             cursor = i;
             break;
@@ -54,14 +52,14 @@ struct parsed_url parse_url(const char* url) {
         cursor += 1;
 
         for (int i = cursor; i < strlen(url); i++) {
-            // printf("%c\n", url[i]);
-        
             if (url[i] == '/') {
-                char port[i - cursor + 1];
-                strncpy(port, url + cursor, i - cursor);
-                port[i - cursor] = '\0';
+                char* string_port = malloc(i - cursor + 1);
+                strncpy(string_port, url + cursor, i - cursor);
+                string_port[i - cursor] = '\0';
 
-                purl.port = atoi(port); // fixme: this function is susceptible to overflow, it works fine but we may want to replace it.
+                purl.port = atoi(string_port); // fixme: this function is susceptible to overflow, it works fine but we may want to replace it.
+                
+                free(string_port);
 
                 cursor = i;
                 break;
@@ -77,13 +75,12 @@ struct parsed_url parse_url(const char* url) {
 
     // printf("Port: %d\n", purl.port);
 
-    char path[strlen(url) - cursor + 1];
-    strncpy(path, url + cursor, strlen(url) - cursor + 1);
-    path[strlen(url) - cursor] = '\0';
-    purl.path = strdup(path);
+    purl.path = malloc(strlen(url) - cursor + 1);
+    strncpy(purl.path, url + cursor, strlen(url) - cursor + 1);
+    purl.path[strlen(url) - cursor] = '\0';
     // cursor = strlen(url) - cursor + 1;
 
-    // printf("Path: %s\n", path);
+    // printf("Path: %s\n", purl.path);
     
     return purl;
 }

@@ -1,3 +1,6 @@
+.vs
+.vscode
 .cache
 build
-.vscode
+out
+CMakePresets.json

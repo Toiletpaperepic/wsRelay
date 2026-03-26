@@ -131,10 +131,11 @@ enum thread_error outbound(int in_socket_fd, int out_websocket_fd) {
 #endif
                 printf(", status code: %i", statuscode);
 
-                char reason[((struct message_data*)msg.msgdata)->size - sizeof(statuscode) + 1];
-                memcpy(reason, ((struct message_data*)msg.msgdata)->buffer + sizeof(statuscode), ((struct message_data*)msg.msgdata)->size - sizeof(statuscode));
+                char* reason = malloc(((struct message_data*)msg.msgdata)->size - sizeof(statuscode) + 1);
+                memcpy(reason, (uint8_t*)(((struct message_data*)msg.msgdata)->buffer) + sizeof(statuscode), ((struct message_data*)msg.msgdata)->size - sizeof(statuscode));
                 reason[sizeof(reason) - 1] = '\0';
                 printf(", reason: %s\n", reason);
+                free(reason);
             } else if (((struct message_data*)msg.msgdata)->size > 123) {
                 printf(", CloseFrame size too big! Not reading...\n");
             } else {

@@ -168,7 +168,7 @@ int websocket_send(int fd, void* buffer, uint64_t size, enum opcodes opcode, boo
         printf("%X ", maskingkey[i]);
     printf("\n");
 
-    uint8_t payload[2 + extraPayloadlength + sizeof(maskingkey) + size] = {};
+    uint8_t* payload = malloc(2 + extraPayloadlength + sizeof(maskingkey) + size);
 
     memcpy(payload, &byte0, sizeof(byte0));
     memcpy(payload + 1, &byte1, sizeof(byte1));
@@ -216,6 +216,8 @@ int websocket_send(int fd, void* buffer, uint64_t size, enum opcodes opcode, boo
         fprintf(stderr, "send(): %s.\n", strerror(errno));
         return EXIT_FAILURE;
     }
+
+    free(payload);
 
     return EXIT_SUCCESS;
 }
@@ -283,7 +285,7 @@ struct message websocket_recv(int fd) {
                 resizebuffer(((struct message_data*)msg.msgdata)->buffer, ((struct message_data*)msg.msgdata)->size + payload_size);
             }
             
-            if (recv(fd, ((struct message_data*)msg.msgdata)->buffer + ((struct message_data*)msg.msgdata)->size, payload_size, MSG_WAITALL) < 0) {
+            if (recv(fd, (uint8_t*)(((struct message_data*)msg.msgdata)->buffer) + ((struct message_data*)msg.msgdata)->size, payload_size, MSG_WAITALL) < 0) {
                 fprintf(stderr, "recv(): %s.\n", strerror(errno));
                 free(((struct message_data*)msg.msgdata)->buffer);
                 msg.error = EXIT_FAILURE; return msg;
@@ -291,7 +293,7 @@ struct message websocket_recv(int fd) {
 
             printf("payload: ");
             for (int i = 0; i < payload_size; i++) {
-                printf("%X ", *(uint8_t *)(((struct message_data*)msg.msgdata)->buffer + ((struct message_data*)msg.msgdata)->size + i));
+                printf("%X ", *(uint8_t *)(((struct message_data*)msg.msgdata)->buffer) + ((struct message_data*)msg.msgdata)->size + i);
             }
             printf("\n");
         }
@@ -306,7 +308,7 @@ struct message websocket_recv(int fd) {
         printf("resizing buffer... %lu -> %lu\n", ((struct message_data*)msg.msgdata)->size, ((struct message_data*)msg.msgdata)->size + 1);
 
         char endchar = '\0';
-        memcpy(((struct message_data*)msg.msgdata)->buffer + ((struct message_data*)msg.msgdata)->size, &endchar, 1);
+        memcpy((uint8_t*)(((struct message_data*)msg.msgdata)->buffer) + ((struct message_data*)msg.msgdata)->size, &endchar, 1);
     }
 
     return msg;

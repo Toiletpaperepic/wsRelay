@@ -102,8 +102,8 @@ bool parse_args(int argc, char *argv[], struct Argument* registerargs, bool igno
         struct Argument* nextarg = registerargs;
 
         while (true) {
-            char dashdashname[3 + strlen(nextarg->name)] = {};
-            memcpy(dashdashname, "--", sizeof("--"));
+            char* dashdashname = malloc(3 + strlen(nextarg->name));
+            memcpy(dashdashname, "--", sizeof("--")); // there isn't a null terminator in dashdashname so we can't use strcat() just yet.
             strcat(dashdashname, nextarg->name);
 
             if (strcmp(dashdashname, argv[i]) == 0) {
@@ -145,6 +145,9 @@ bool parse_args(int argc, char *argv[], struct Argument* registerargs, bool igno
 
                 break;
             }
+
+            free(dashdashname);
+
             if (nextarg->next == NULL) {
                 if (ignore_unknowns) {
                     return false;

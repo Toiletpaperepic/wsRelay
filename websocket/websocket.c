@@ -104,7 +104,7 @@ int websocket_connect(struct parsed_url purl) {
         fprintf(stderr, "recv(): %s.\n", strerror(errno));
         return -1;
     }
-    printf("received accept message with size of %zi, %s\n", size, buffer);
+    printf("received accept message with size of %i, %s\n", size, buffer);
     
     //TODO: check for a valid response?
 

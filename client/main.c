@@ -1,11 +1,11 @@
-#if HAVE_WINSOCK2_H
-#include <winsock2.h>
+#if HAVE_WSAPOLL
+// included later down
 #elif HAVE_SYS_EPOLL_H
 #include <sys/epoll.h>
 #elif HAVE_POLL_H
 #include <poll.h>
 #else
-#error No implementation found!
+#error No implementation found for poll()!
 #endif
 #if HAVE_CREATETHREAD
 // already included in windows.h... somewhere?
@@ -15,6 +15,7 @@
 #error No implementation found for multithreading!
 #endif
 #if defined(_WIN32)
+#include <winsock2.h>
 #include <windows.h>
 #include <io.h>
 #else
@@ -244,7 +245,7 @@ void* route(void* ptrrd)
             }
         }
     }
-#elif HAVE_WINSOCK2_H || HAVE_POLL_H
+#elif HAVE_WSAPOLL || HAVE_POLL_H
     struct pollfd fds[2];
 
     fds[0].events = POLLIN;
@@ -255,7 +256,7 @@ void* route(void* ptrrd)
     while (status != SIGINT && error == 0) {
         printf("waiting for packets...\n");
         int pollret = 
-#if HAVE_WINSOCK2_H
+#if HAVE_WSAPOLL
         WSAPoll
 #elif HAVE_POLL_H
         poll
@@ -264,7 +265,7 @@ void* route(void* ptrrd)
 
         if (pollret < 0) {
             fprintf(stderr, 
-#if HAVE_WINSOCK2_H
+#if HAVE_WSAPOLL
                 "WSAPoll(): %s.\n"
 #elif HAVE_POLL_H
                 "poll(): %s.\n"

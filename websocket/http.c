@@ -35,55 +35,55 @@ void make_user_agent(char** destinationstring) {
     // https://sourceforge.net/p/predef/wiki/Home/
     
     // TODO: create USER_AGENT_LESS_INFO env
-    #if __ANDROID__
+#if __ANDROID__
     appendchar(destinationstring, "Android");
-    #elif __linux__
+#elif __linux__
     appendchar(destinationstring, "Linux");
-    #elif defined(_WIN32)
+#elif defined(_WIN32)
     appendchar(destinationstring, "Windows");
-    #else
-    #warning unknown platform
+#else
+#warning unknown platform
     appendchar(destinationstring, "unknown platform");
-    #endif
+#endif
     
     appendchar(destinationstring, ";");
-    #if defined(_MSC_VER)
-    #if defined(__clang__)
+#if defined(_MSC_VER)
+#if defined(__clang__)
     appendchar(destinationstring, " MSVC ");
     appendchar(destinationstring, "(clang ");
     appendchar(destinationstring, __clang_version__);
     appendchar(destinationstring, ")");
-    #else
+#else
     appendchar(destinationstring, " MSVC");
     //appendchar(destinationstring, _MSC_FULL_VER);
-    #endif
-    #elif defined(__clang__)
+#endif
+#elif defined(__clang__)
     appendchar(destinationstring, " clang ");
     appendchar(destinationstring, __clang_version__);
-    #elif defined(__GNUC__)
+#elif defined(__GNUC__)
     appendchar(destinationstring, " gcc ");
     appendchar(destinationstring, __VERSION__);
-    #if defined(__MINGW64__) && defined(__MINGW32__)
+#if defined(__MINGW64__) && defined(__MINGW32__)
     appendchar(destinationstring, " (Mingw-w64)");
-    #elif !defined(__MINGW64__) && defined(__MINGW32__)
+#elif !defined(__MINGW64__) && defined(__MINGW32__)
     // appendchar(destinationstring, " (Mingw)");
-    #error "Legacy compiler detected! Please use mingw-w64 (https://www.mingw-w64.org/)"
-    #endif
-    #else
-    #warning unknown compiler
+#error "Legacy compiler detected! Please use mingw-w64 (https://www.mingw-w64.org/)"
+#endif
+#else
+#warning unknown compiler
     appendchar(destinationstring, " unknown compiler");
-    #endif
+#endif
     
     appendchar(destinationstring, ";");
     
-    #if __x86_64__
+#if __x86_64__
     appendchar(destinationstring, " x86_64");
-    #elif __aarch64__
+#elif __aarch64__
     appendchar(destinationstring, " aarch64");
-    #else
-    #warning unknown arch
+#else
+#warning unknown arch
     appendchar(destinationstring, " unknown arch");
-    #endif
+#endif
     
     appendchar(destinationstring, "; +https://github.com/Toiletpaperepic/wsRelay/) ");
 

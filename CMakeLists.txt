@@ -95,12 +95,16 @@ add_library(base64
 
 target_include_directories(base64 PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/utils/base64)
 
-include_directories(utils/common/include)
+add_library(common
+    common/common.c
+    common/common.h
+)
+target_include_directories(common PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/common)
 
 if(NOT HAVE___BUILTIN_ADD_OVERFLOW AND NOT HAVE___BUILTIN_MUL_OVERFLOW AND NOT HAVE_STDCKDINT_H)
     file(DOWNLOAD https://github.com/jart/jtckdint/raw/refs/heads/master/jtckdint.h ${CMAKE_CURRENT_BINARY_DIR}/downloads/include/jtckdint.h SHOW_PROGRESS EXPECTED_HASH SHA256=4a2bbbf4992384c17a332bfb3b4246f90bb84aa9b3282e1b966091981f1c2bb7)
     file(DOWNLOAD https://github.com/jart/jtckdint/raw/refs/heads/master/LICENSE.txt ${CMAKE_CURRENT_BINARY_DIR}/downloads/license/jtckdint/LICENSE SHOW_PROGRESS EXPECTED_HASH SHA256=c2b829605ee9c0b05c5c3708f308fc9b0954fb6ad1e0ab1add85f740a8827497)
-    include_directories(${CMAKE_CURRENT_BINARY_DIR}/downloads/include)
+    target_include_directories(common PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/downloads/include)
 endif()
 # -------------------------
 
@@ -119,7 +123,7 @@ add_library(websocket SHARED
 )
 
 target_include_directories(websocket PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/websocket)
-target_link_libraries(websocket PUBLIC base64)
+target_link_libraries(websocket PUBLIC base64 common)
 if(WIN32)
     find_library(WSOCK32_LIBRARY wsock32)
     find_library(WS2_32_LIBRARY ws2_32)
@@ -144,7 +148,7 @@ add_executable(client
     client/socket.h
 )
 
-target_link_libraries(client PUBLIC websocket)
+target_link_libraries(client PUBLIC websocket common)
 set_property(TARGET client PROPERTY OUTPUT_NAME ${PROJECT_NAME})
 install(TARGETS client RUNTIME DESTINATION bin)
 # -------------------------
@@ -163,6 +167,8 @@ add_executable(commandline
     client/args.c
     client/args.h
 )
+
+target_link_libraries(commandline PUBLIC common)
 
 endtest(commandline)
 # -------------------------

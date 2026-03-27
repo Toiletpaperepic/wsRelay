@@ -6,6 +6,10 @@
 #define CHECKED_ARITHMETIC 0
 #endif
 
+#if !defined(STRING_TO_INT_CONVERSION)
+#define STRING_TO_INT_CONVERSION 0
+#endif
+
 #if RESIZEBUFFER_CUSTOM_ERROR
 #define resizebuffer(old_buffer, newsize, custom_error)                                       \
     void* new_buffer = realloc(old_buffer, newsize);                                          \
@@ -45,4 +49,9 @@
 #define CHECKED_ADD(R, A, B) ckd_add((R), (A), (B))
 #define CHECKED_MUL(R, A, B) ckd_mul((R), (A), (B))
 #endif
+#endif
+
+#if STRING_TO_INT_CONVERSION
+int32_t strtoint(const char* str);
+uint32_t strtouint(const char* str);
 #endif

@@ -169,8 +169,17 @@ add_executable(commandline
 )
 
 target_link_libraries(commandline PUBLIC common)
-
 endtest(commandline)
+
+add_executable(parse_url
+    tests/parse_url/parse_url.c
+    websocket/parse_url.c
+    websocket/parse_url.h
+)
+
+target_link_libraries(parse_url PUBLIC common)
+endtest(parse_url)
+
 # -------------------------
 
 include(GNUInstallDirs)

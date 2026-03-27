@@ -52,6 +52,8 @@
 #endif
 
 #if STRING_TO_INT_CONVERSION
-int32_t strtoint(const char* str);
-uint32_t strtouint(const char* str);
+uint16_t strtoint16(const char* str);
+uint16_t strtouint16(const char* str);
+int32_t strtoint32(const char* str);
+uint32_t strtouint32(const char* str);
 #endif

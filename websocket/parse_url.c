@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include "parse_url.h"
+#define STRING_TO_INT_CONVERSION 1
+#include "common.h"
 
 struct parsed_url parse_url(const char* url) {
     struct parsed_url purl;
@@ -57,7 +59,7 @@ struct parsed_url parse_url(const char* url) {
                 strncpy(string_port, url + cursor, i - cursor);
                 string_port[i - cursor] = '\0';
 
-                purl.port = atoi(string_port); // fixme: this function is susceptible to overflow, it works fine but we may want to replace it.
+                purl.port = strtouint16(string_port); // fixme: this function has been replaced, but there isn't any error handling.
                 
                 free(string_port);
 

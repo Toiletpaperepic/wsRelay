@@ -33,7 +33,7 @@
 #endif
 
 #if CHECKED_ARITHMETIC
-#if HAVE_STDCKDINT_H
+#if defined(HAVE_STDCKDINT_H)
 #include <stdckdint.h>
 #define CHECKED_ADD(R, A, B) ckd_add((R), (A), (B))
 #define CHECKED_MUL(R, A, B) ckd_mul((R), (A), (B))

@@ -33,7 +33,7 @@ int websocket_connect(struct parsed_url purl) {
     struct addrinfo *result, *ai, hints;
     int error, fd;
     
-    memset(&hints, 0, sizeof hints);
+    memset(&hints, 0, sizeof(hints));
     hints.ai_family = AF_UNSPEC;
     hints.ai_socktype = SOCK_STREAM;
 

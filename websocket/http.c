@@ -31,59 +31,19 @@ void make_user_agent(char** destinationstring) {
     appendchar(destinationstring, "User-Agent: wsrRelay/");
     appendchar(destinationstring, __PROJECT_VERSION__);
     appendchar(destinationstring, " ("); 
-
-    // https://sourceforge.net/p/predef/wiki/Home/
     
     // TODO: create USER_AGENT_LESS_INFO env
-#if defined(__ANDROID__)
-    appendchar(destinationstring, "Android");
-#elif defined(__linux__)
-    appendchar(destinationstring, "Linux");
-#elif defined(_WIN32)
-    appendchar(destinationstring, "Windows");
-#else
-#warning unknown platform
-    appendchar(destinationstring, "unknown platform");
-#endif
+    appendchar(destinationstring, OS_NAME);
     
-    appendchar(destinationstring, ";");
-#if defined(_MSC_VER)
-#if defined(__clang__)
-    appendchar(destinationstring, " MSVC ");
-    appendchar(destinationstring, "(clang ");
-    appendchar(destinationstring, __clang_version__);
-    appendchar(destinationstring, ")");
-#else
-    appendchar(destinationstring, " MSVC");
-    //appendchar(destinationstring, _MSC_FULL_VER);
-#endif
-#elif defined(__clang__)
-    appendchar(destinationstring, " clang ");
-    appendchar(destinationstring, __clang_version__);
-#elif defined(__GNUC__)
-    appendchar(destinationstring, " gcc ");
-    appendchar(destinationstring, __VERSION__);
-#if defined(__MINGW64__) && defined(__MINGW32__)
-    appendchar(destinationstring, " (Mingw-w64)");
-#elif !defined(__MINGW64__) && defined(__MINGW32__)
-    // appendchar(destinationstring, " (Mingw)");
-#error "Legacy compiler detected! Please use mingw-w64 (https://www.mingw-w64.org/)"
-#endif
-#else
-#warning unknown compiler
-    appendchar(destinationstring, " unknown compiler");
-#endif
+    appendchar(destinationstring, "; ");
     
-    appendchar(destinationstring, ";");
+    appendchar(destinationstring, COMPILER_NAME);
+    appendchar(destinationstring, " ");
+    appendchar(destinationstring, COMPILER_VERSION);
     
-#if defined(__x86_64__) || defined(_M_AMD64)
-    appendchar(destinationstring, " x86_64");
-#elif defined(__aarch64__) || defined(_M_ARM64)
-    appendchar(destinationstring, " aarch64");
-#else
-#warning unknown arch
-    appendchar(destinationstring, " unknown arch");
-#endif
+    appendchar(destinationstring, "; ");
+    
+    appendchar(destinationstring, PROCESSOR_ARCHITECTURE);
     
     appendchar(destinationstring, "; +https://github.com/Toiletpaperepic/wsRelay/) ");
 

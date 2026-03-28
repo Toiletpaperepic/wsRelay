@@ -59,7 +59,7 @@ struct parsed_url parse_url(const char* url) {
                 strncpy(string_port, url + cursor, i - cursor);
                 string_port[i - cursor] = '\0';
 
-                purl.port = strtouint16(string_port); // fixme: this function has been replaced, but there isn't any error handling.
+                strtouint16(&purl.port,string_port); // fixme: this function has been replaced, but there isn't any error handling.
                 
                 free(string_port);
 

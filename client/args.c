@@ -50,9 +50,9 @@ bool parse_args(int argc, char *argv[], struct Argument* registerargs, bool igno
                     switch (nextarg->type) {
                         case IS_UNSIGNED_INT:
                             nextarg->value = malloc(sizeof(unsigned int));
-                            unsigned int x = strtouint32(argv[i + 1]);
-                            if (x == UINT32_MAX) {
-                                fprintf(stderr, "strtouint() Failed: invalid parameter.\n");
+                            unsigned int x = 0;
+                            if (strtouint32(&x, argv[i + 1])) {
+                                fprintf(stderr, "strtouint32() Failed: invalid parameter.\n");
                                 return true;
                             }
                             memcpy(nextarg->value, &x, sizeof(unsigned int));
@@ -60,9 +60,9 @@ bool parse_args(int argc, char *argv[], struct Argument* registerargs, bool igno
                             break;
                         case IS_INT:
                             nextarg->value = malloc(sizeof(int));
-                            int y = strtoint32(argv[i + 1]);
-                            if (y == INT32_MAX) {
-                                fprintf(stderr, "strtoint() Failed: invalid parameter.\n");
+                            int y = 0;
+                            if (strtoint32(&y, argv[i + 1])) {
+                                fprintf(stderr, "strtoint32() Failed: invalid parameter.\n");
                                 return true;
                             }
                             memcpy(nextarg->value, &y, sizeof(int));

@@ -52,8 +52,11 @@
 #endif
 
 #if STRING_TO_INT_CONVERSION
-uint16_t strtoint16(const char* str);
-uint16_t strtouint16(const char* str);
-int32_t strtoint32(const char* str);
-uint32_t strtouint32(const char* str);
+bool strtoint16(int16_t* result, const char* str);
+bool strtouint16(uint16_t* result, const char* str);
+bool strtoint32(int32_t* result, const char* str);
+bool strtouint32(uint32_t* result, const char* str);
 #endif
+
+#define SUCCESS 0
+#define FAILURE 1

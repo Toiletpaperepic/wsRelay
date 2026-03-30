@@ -98,7 +98,7 @@ int websocket_connect(struct parsed_url purl) {
 
     free((void*)message);
 
-    char buffer[1024] = {};
+    char buffer[1024];
     int size = recv(fd, buffer, sizeof(buffer), 0);
     if (size < 0) {
         fprintf(stderr, "recv(): %s.\n", strerror(errno));
@@ -137,7 +137,7 @@ int websocket_send(int fd, void* buffer, uint64_t size, enum opcodes opcode, boo
         printf("size is smaller then UINT64_MAX\n");
     }
 
-    uint8_t maskingkey[4] = {};
+    uint8_t maskingkey[4];
 #if defined(_WIN32)
     BCRYPT_ALG_HANDLE handle;
     NTSTATUS error;
@@ -202,7 +202,7 @@ int websocket_send(int fd, void* buffer, uint64_t size, enum opcodes opcode, boo
         }
         printf("\n");
         
-        printf("payload (size): %lu\n", sizeof(payload));
+        printf("payload (size): %zu\n", sizeof(payload));
 
         printf("payload (masked): ");
         for (int i = 0; i < size; i++) {
@@ -230,7 +230,7 @@ struct message websocket_recv(int fd) {
     ((struct message_data*)msg.msgdata)->buffer = NULL;
     
     while (FIN != true) {
-        uint8_t header[2] = {};
+        uint8_t header[2];
         if (recv(fd, header, sizeof(header), MSG_WAITALL) < 0) {
             fprintf(stderr, "recv(): %s.\n", strerror(errno));
             msg.error = EXIT_FAILURE; return msg;
@@ -275,13 +275,13 @@ struct message websocket_recv(int fd) {
 #endif
         }
 
-        printf("payload size: %lu, current buffer size: %lu\n", payload_size, ((struct message_data*)msg.msgdata)->size);
+        printf("payload size: %zu, current buffer size: %zu\n", payload_size, ((struct message_data*)msg.msgdata)->size);
 
         if (payload_size > 0) {
             if (((struct message_data*)msg.msgdata)->buffer == NULL) {
                 ((struct message_data*)msg.msgdata)->buffer = malloc(payload_size);
             } else {
-                printf("resizing buffer... %lu -> %lu\n", ((struct message_data*)msg.msgdata)->size, ((struct message_data*)msg.msgdata)->size + payload_size);
+                printf("resizing buffer... %zu -> %zu\n", ((struct message_data*)msg.msgdata)->size, ((struct message_data*)msg.msgdata)->size + payload_size);
                 resizebuffer(((struct message_data*)msg.msgdata)->buffer, ((struct message_data*)msg.msgdata)->size + payload_size);
             }
             
@@ -305,7 +305,7 @@ struct message websocket_recv(int fd) {
     // add the end string char.
     if (((struct message_data*)msg.msgdata)->opcode == TEXT) {
         resizebuffer(((struct message_data*)msg.msgdata)->buffer, ((struct message_data*)msg.msgdata)->size + 1);
-        printf("resizing buffer... %lu -> %lu\n", ((struct message_data*)msg.msgdata)->size, ((struct message_data*)msg.msgdata)->size + 1);
+        printf("resizing buffer... %zu -> %zu\n", ((struct message_data*)msg.msgdata)->size, ((struct message_data*)msg.msgdata)->size + 1);
 
         char endchar = '\0';
         memcpy((uint8_t*)(((struct message_data*)msg.msgdata)->buffer) + ((struct message_data*)msg.msgdata)->size, &endchar, 1);

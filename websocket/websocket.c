@@ -72,7 +72,6 @@ int websocket_connect(struct parsed_url purl) {
         
         if (connect(fd, ai->ai_addr, ai->ai_addrlen) < 0) {
             fprintf(stderr, "connect(): %s.\n", strerror(errno));
-            close(fd);
             continue;
         }
 
@@ -93,6 +92,7 @@ int websocket_connect(struct parsed_url purl) {
     if (send(fd, message, strlen(message), 0) < 0) {
         fprintf(stderr, "send(): %s.\n", strerror(errno));
         free((void*)message);
+        close(fd);
         return -1;
     }
 
@@ -102,6 +102,7 @@ int websocket_connect(struct parsed_url purl) {
     int size = recv(fd, buffer, sizeof(buffer), 0);
     if (size < 0) {
         fprintf(stderr, "recv(): %s.\n", strerror(errno));
+        close(fd);
         return -1;
     }
     printf("received accept message with size of %i, %s\n", size, buffer);

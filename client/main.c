@@ -440,10 +440,6 @@ int main(int argc, char *argv[]) {
         threadroutes[threadroutes_total - 1]->out_websocket_fd = websocket_connect(purl);
         if (threadroutes[threadroutes_total - 1]->out_websocket_fd < 0) {
             fprintf(stderr, "failed to accept a new websocket connection.\n");
-            if (close(threadroutes[threadroutes_total - 1]->in_socket_fd)) {
-                fprintf(stderr, "close(): %s.\n", strerror(errno));
-                free(threadroutes[threadroutes_total - 1]); return_error = EXIT_FAILURE; break;
-            }
             free(threadroutes[threadroutes_total - 1]);
             continue;
         }

@@ -43,7 +43,10 @@ bool parse_args(int argc, char *argv[], struct Argument* registerargs, bool igno
             memcpy(dashdashname, "--", sizeof("--")); // there isn't a null terminator in dashdashname so we can't use strcat() just yet.
             strcat(dashdashname, nextarg->name);
 
-            if (strcmp(dashdashname, argv[i]) == 0) {
+            bool condition_result = strcmp(dashdashname, argv[i]) == 0; 
+            free(dashdashname);
+
+            if (condition_result) {
                 if (nextarg->type == IS_BOOL) {
                     nextarg->value = (void*)true;
                 } else if (i + 1 != argc) /*if operand needed*/ {
@@ -82,8 +85,6 @@ bool parse_args(int argc, char *argv[], struct Argument* registerargs, bool igno
 
                 break;
             }
-
-            free(dashdashname);
 
             if (nextarg->next == NULL) {
                 if (ignore_unknowns) {

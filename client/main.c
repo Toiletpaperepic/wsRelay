@@ -52,8 +52,8 @@ void version() {
     free(message);
 }
 
-void help(struct Argument* firstarglist, struct Argument* secondarglist) {
-    printf("Usage: wsrelay --out-url <url> [options]\n");
+void help(const char* programname, struct Argument* firstarglist, struct Argument* secondarglist) {
+    printf("Usage: %s --out-url <url> [options]\n", programname);
     print_description(firstarglist);
     print_description(secondarglist);
 }
@@ -322,15 +322,15 @@ int main(int argc, char *argv[]) {
     register_argument(arghelp, &argversion, "help", IS_BOOL, false, "Display this information.")
     
     // second parse
-    register_argument(argouturl, NULL, "out-url", IS_STRING, true, "Specify where <port> will forward to.");
-    register_argument(argport, &argouturl, "port", IS_UNSIGNED_INT, false, "Specify <port> will be set.");
+    register_argument(argaddress, NULL, "address", IS_STRING, true, "Specify where <port> will forward to.");
+    register_argument(argport, &argaddress, "port", IS_UNSIGNED_INT, false, "Bind to specify port (default: 48375).");
 
     if (parse_args(argc, argv, &arghelp, true)) {
         return EXIT_FAILURE;
     }
 
     if ((bool)arghelp.value == true) {
-        help(&arghelp, &argport);
+        help(argv[0], &arghelp, &argport);
         return EXIT_SUCCESS;
     }
 
@@ -344,7 +344,7 @@ int main(int argc, char *argv[]) {
         return EXIT_FAILURE;
     }
 
-    struct parsed_url purl = parse_url(argouturl.value);
+    struct parsed_url purl = parse_url(argaddress.value);
     if (purl.protocol == unknown) {
         fprintf(stderr, "Unknown protocol.\n");
         cleanup_args(&argport);
@@ -457,7 +457,7 @@ int main(int argc, char *argv[]) {
         pthread_create(&threadroutes[threadroutes_total - 1]->thread, NULL, &route, (void*)threadroutes[threadroutes_total - 1]);
 #endif
 
-        resizebuffer(threadroutes, threadroutes_total * sizeof(*threadroutes), free(threadroutes[threadroutes_total - 1]); return_error = EXIT_FAILURE; break;);
+        resizebuffer(threadroutes, threadroutes_total * sizeof(*threadroutes), free(threadroutes[threadroutes_total - 1]); return_error = EXIT_FAILURE; break;, false);
         threadroutes_total++;
     }
 

@@ -31,15 +31,16 @@ bool strtouint32(uint32_t* result, const char* str) {
     return SUCCESS;
 }
 
-bool strtoint16(int16_t* result, const char* str) {
-    if (str[0] == '-') {
-        STR_TO_X_BUILDER(int16_t, true);
-        *result = -*result;
-    } else {
-        STR_TO_X_BUILDER(int16_t, false);
-    }
-    return SUCCESS;
-}
+// isn't used yet
+// bool strtoint16(int16_t* result, const char* str) {
+//     if (str[0] == '-') {
+//         STR_TO_X_BUILDER(int16_t, true);
+//         *result = -*result;
+//     } else {
+//         STR_TO_X_BUILDER(int16_t, false);
+//     }
+//     return SUCCESS;
+// }
 
 bool strtouint16(uint16_t* result, const char* str) {
     STR_TO_X_BUILDER(uint16_t, false);

@@ -10,7 +10,7 @@
 
 void print_description(struct Argument* nextarg) {
     while (true) {
-        printf("    %s - %s\n", nextarg->name, nextarg->description);
+        printf("    --%s - %s\n", nextarg->name, nextarg->description);
     
         if (nextarg->next == NULL) {
             break;

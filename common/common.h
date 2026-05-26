@@ -11,29 +11,26 @@
 #endif
 
 #if RESIZEBUFFER_CUSTOM_ERROR
-#define resizebuffer(old_buffer, newsize, custom_error)                                       \
+#define resizebuffer(old_buffer, newsize, custom_error, with_free)                            \
     void* new_buffer = realloc(old_buffer, newsize);                                          \
     if (new_buffer == NULL) {                                                                 \
         fprintf(stderr, "realloc(): Unknown reason.\n");                                      \
+        if (with_free) {                                                                      \
+            free(old_buffer);                                                                 \
+        }                                                                                     \
         custom_error                                                                          \
-        free(old_buffer);                                                                     \
     } else if (old_buffer != new_buffer) {                                                    \
         old_buffer = new_buffer;                                                              \
     }                                                                                         \
-    new_buffer = NULL;                                                                        \
-
+    new_buffer = NULL;
 #else
 #define resizebuffer(old_buffer, newsize)                                                     \
     void* new_buffer = realloc(old_buffer, newsize);                                          \
-    if (new_buffer == NULL) {                                                                 \
-        fprintf(stderr, "realloc(): Unknown reason.\n");                                      \
-        free(old_buffer);                                                                     \
-        exit(EXIT_FAILURE);                                                                   \
-    } else if (old_buffer != new_buffer) {                                                    \
+    assert(new_buffer != NULL);                                                               \
+    if (old_buffer != new_buffer) {                                                           \
         old_buffer = new_buffer;                                                              \
     }                                                                                         \
-    new_buffer = NULL;                                                                        \
-
+    new_buffer = NULL;
 #endif
 
 #if CHECKED_ARITHMETIC
@@ -61,3 +58,4 @@ bool strtouint32(uint32_t* result, const char* str);
 
 #define SUCCESS 0
 #define FAILURE 1
+#define NEGFAILURE -1

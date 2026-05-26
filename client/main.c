@@ -28,6 +28,7 @@
 #include <assert.h>
 #include <stdint.h>
 #include <signal.h>
+#include <stddef.h>
 #include <errno.h>
 #include <stdio.h>
 #define RESIZEBUFFER_CUSTOM_ERROR 1
@@ -64,7 +65,7 @@ enum connection_type {
 };
 
 enum thread_error {
-    CONTINUE,
+    CONTINUE = -1,
     NORMAL_EXIT,
     POLL_ERROR,
     READ_ERROR,
@@ -125,15 +126,16 @@ enum thread_error outbound(int in_socket_fd, int out_websocket_fd) {
                 uint16_t statuscode = 0;
                 memcpy(&statuscode, ((struct message_data*)msg.msgdata)->buffer, sizeof(uint16_t));
 #if defined(_WIN32)
-            statuscode = htons(statuscode);
+                statuscode = htons(statuscode);
 #else
-            statuscode = be16toh(statuscode);
+                statuscode = be16toh(statuscode);
 #endif
                 printf(", status code: %i", statuscode);
-
-                char* reason = malloc(((struct message_data*)msg.msgdata)->size - sizeof(statuscode) + 1);
+                
+                size_t sizeofreason = ((struct message_data*)msg.msgdata)->size - sizeof(statuscode) + 1;
+                char* reason = malloc(sizeofreason);
                 memcpy(reason, (uint8_t*)(((struct message_data*)msg.msgdata)->buffer) + sizeof(statuscode), ((struct message_data*)msg.msgdata)->size - sizeof(statuscode));
-                reason[sizeof(reason) - 1] = '\0';
+                reason[sizeofreason - 1] = '\0';
                 printf(", reason: %s\n", reason);
                 free(reason);
             } else if (((struct message_data*)msg.msgdata)->size > 123) {
@@ -318,11 +320,11 @@ void* route(void* ptrrd)
 int main(int argc, char *argv[]) {
     // make sure there is 0 required args here
     // first parse
-    register_argument(argversion, NULL, "version", IS_BOOL, false, "Display wsRelay version information.")
+    register_argument(argversion, NULL, "version", IS_BOOL, false, "Display program version information.")
     register_argument(arghelp, &argversion, "help", IS_BOOL, false, "Display this information.")
     
     // second parse
-    register_argument(argaddress, NULL, "address", IS_STRING, true, "Specify where <port> will forward to.");
+    register_argument(argaddress, NULL, "address", IS_STRING, true, "Specify where incoming trafic will relay to.");
     register_argument(argport, &argaddress, "port", IS_UNSIGNED_INT, false, "Bind to specify port (default: 48375).");
 
     if (parse_args(argc, argv, &arghelp, true)) {
@@ -371,7 +373,28 @@ int main(int argc, char *argv[]) {
     printf("Starting local connection...\n");
 
 
-#if !defined(_WIN32)
+#if defined(_WIN32)
+    // todo: windows specific version
+
+    WSADATA wsaData;
+    int err;
+    
+    // begin loading Ws2_32.dll
+    err = WSAStartup(MAKEWORD(2, 2), &wsaData);
+    if (err != 0) {
+        printf("WSAStartup failed with error: %d\n", err);
+        return EXIT_FAILURE;
+    }
+    
+    //verify that we have the correct version
+    if (LOBYTE(wsaData.wVersion) != 2 || HIBYTE(wsaData.wVersion) != 2) {
+        fprintf(stderr, "Could not find a usable version of Winsock.dll...\n");
+        WSACleanup();
+        return 1;
+    } else {
+        printf("Valid Winsock dll (v2.2) was found!\n");
+    }
+#else
     struct sigaction a;
     a.sa_handler = catch_function;
     a.sa_flags = 0;
@@ -381,27 +404,6 @@ int main(int argc, char *argv[]) {
         free((void*)purl.address);
         free((void*)purl.path);
         return EXIT_FAILURE;
-    }
-#endif
-
-#if defined(_WIN32)
-    WSADATA wsaData;
-    int err;
-
-    // begin loading Ws2_32.dll
-    err = WSAStartup(MAKEWORD(2, 2), &wsaData);
-    if (err != 0) {
-        printf("WSAStartup failed with error: %d\n", err);
-        return EXIT_FAILURE;
-    }
-
-    //verify that we have the correct version
-    if (LOBYTE(wsaData.wVersion) != 2 || HIBYTE(wsaData.wVersion) != 2) {
-        fprintf(stderr, "Could not find a usable version of Winsock.dll...\n");
-        WSACleanup();
-        return 1;
-    } else {
-        printf("Valid Winsock dll (v2.2) was found!\n");
     }
 #endif
 
@@ -457,8 +459,8 @@ int main(int argc, char *argv[]) {
         pthread_create(&threadroutes[threadroutes_total - 1]->thread, NULL, &route, (void*)threadroutes[threadroutes_total - 1]);
 #endif
 
-        resizebuffer(threadroutes, threadroutes_total * sizeof(*threadroutes), free(threadroutes[threadroutes_total - 1]); return_error = EXIT_FAILURE; break;, false);
         threadroutes_total++;
+        resizebuffer(threadroutes, threadroutes_total * sizeof(*threadroutes), free(threadroutes[threadroutes_total - 1]); return_error = EXIT_FAILURE; break;, false);
     }
 
     for (int i = 0; i < threadroutes_total - 1; i++) {

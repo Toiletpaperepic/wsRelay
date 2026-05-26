@@ -14,10 +14,11 @@
 #include <netinet/in.h>
 #include <sys/types.h>
 #include <endian.h>
-#include <netdb.h>
 #include <unistd.h>
+#include <netdb.h>
 #endif
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
 #include <string.h>
 #include <stdlib.h>
@@ -81,7 +82,7 @@ int websocket_connect(struct parsed_url purl) {
     freeaddrinfo(result);
 
     if (!success)
-        return -1;
+        return NEGFAILURE;
     else
         printf("successfuly connected to a server using getaddrinfo!\n");
 
@@ -98,17 +99,29 @@ int websocket_connect(struct parsed_url purl) {
 
     free((void*)message);
 
-    char buffer[1024];
-    int size = recv(fd, buffer, sizeof(buffer), 0);
-    if (size < 0) {
-        fprintf(stderr, "recv(): %s.\n", strerror(errno));
-        close(fd);
-        return -1;
-    }
-    printf("received accept message with size of %i, %s\n", size, buffer);
-    
-    //TODO: check for a valid response?
+    struct http_response_read_result rrr = read_http_response_header(fd);
+    if (rrr.error == FAILURE) 
+        return NEGFAILURE;
 
+    struct http_response_read_result_success rrrs = *(struct http_response_read_result_success*)rrr.data;
+    printf("%s %s\n", getheaderfromlist("Connection", rrrs.headerslist_len, rrrs.headerslist)->header_name, getheaderfromlist("Connection", rrrs.headerslist_len, rrrs.headerslist)->header_content);
+
+    if (strcmp(rrrs.httpcode, "101") != 0) {
+        fprintf(stderr, "Server did not send a 101 response! (got %s)\n", rrrs.httpcode);
+        free(rrrs.headerslist); return NEGFAILURE;
+    }
+
+    if (getheaderfromlist("Connection", rrrs.headerslist_len, rrrs.headerslist) == NULL) {
+        fprintf(stderr, "Server did not send a Connection header!\n");
+        free(rrrs.headerslist); return NEGFAILURE;
+    }
+
+    if (getheaderfromlist("Upgrade", rrrs.headerslist_len, rrrs.headerslist) == NULL) {
+        fprintf(stderr, "Server did not send a Upgrade header!\n");
+        free(rrrs.headerslist); return NEGFAILURE;
+    }
+
+    free(rrrs.headerslist);
     return fd;
 }
 
@@ -146,19 +159,19 @@ int websocket_send(int fd, void* buffer, uint64_t size, enum opcodes opcode, boo
     error = BCryptOpenAlgorithmProvider(&handle, BCRYPT_RNG_ALGORITHM,NULL,0);
     if (!BCRYPT_SUCCESS(error)) {
         fprintf(stderr, "BCryptOpenAlgorithmProvider(): %lX.\n", error);
-        exit(EXIT_FAILURE);
+        return FAILURE;
     }
     
     error = BCryptGenRandom(handle, (unsigned char*)maskingkey, sizeof(maskingkey), 0);
     if (!BCRYPT_SUCCESS(error)) {
         fprintf(stderr, "BCryptGenRandom(): %lX.\n", error);
-        exit(EXIT_FAILURE);
+        return FAILURE;
     }
     
     error = BCryptCloseAlgorithmProvider(handle,0);
     if (!BCRYPT_SUCCESS(error)) {
         fprintf(stderr, "BCryptCloseAlgorithmProvider(): %lX.\n", error);
-        exit(EXIT_FAILURE);
+        return FAILURE;
     }
 #else
     getrandom(&maskingkey, sizeof(maskingkey), 0);
@@ -169,7 +182,8 @@ int websocket_send(int fd, void* buffer, uint64_t size, enum opcodes opcode, boo
         printf("%X ", maskingkey[i]);
     printf("\n");
 
-    uint8_t* payload = malloc(2 + extraPayloadlength + sizeof(maskingkey) + size);
+    size_t payload_size = 2 + extraPayloadlength + sizeof(maskingkey) + size;
+    uint8_t* payload = malloc(payload_size);
 
     memcpy(payload, &byte0, sizeof(byte0));
     memcpy(payload + 1, &byte1, sizeof(byte1));
@@ -203,7 +217,7 @@ int websocket_send(int fd, void* buffer, uint64_t size, enum opcodes opcode, boo
         }
         printf("\n");
         
-        printf("payload (size): %zu\n", sizeof(payload));
+        printf("payload (size): %zu\n", payload_size);
 
         printf("payload (masked): ");
         for (int i = 0; i < size; i++) {
@@ -213,14 +227,15 @@ int websocket_send(int fd, void* buffer, uint64_t size, enum opcodes opcode, boo
         printf("\n");
     }
 
-    if (send(fd, payload, sizeof(payload), 0) < 0) {
+    if (send(fd, payload, payload_size, 0) < 0) {
         fprintf(stderr, "send(): %s.\n", strerror(errno));
-        return EXIT_FAILURE;
+        free(payload);
+        return FAILURE;
     }
 
     free(payload);
 
-    return EXIT_SUCCESS;
+    return SUCCESS;
 }
 
 struct message websocket_recv(int fd) {
@@ -232,7 +247,7 @@ struct message websocket_recv(int fd) {
     
     while (FIN != true) {
         uint8_t header[2];
-        if (recv(fd, header, sizeof(header), MSG_WAITALL) < 0) {
+        if (recv(fd, header, sizeof(header), MSG_WAITALL) <= 0) { // todo: make a test to figure out what recv returns (on linux it's ssize_t, on windows it's int. 4 bytes longer...)
             fprintf(stderr, "recv(): %s.\n", strerror(errno));
             msg.error = EXIT_FAILURE; return msg;
         }
@@ -242,7 +257,7 @@ struct message websocket_recv(int fd) {
 
         if ((header[0] & 0b01110000) != 0) {
             fprintf(stderr, "RSV[1..3] has a non 0 value! Connection must be considered a FAIL!\n");
-            msg.error = EXIT_FAILURE; return msg;
+            msg.error = FAILURE; return msg;
         }
 
         enum opcodes opcode = header[0] & 0b00001111;
@@ -252,22 +267,22 @@ struct message websocket_recv(int fd) {
         printf("masked: %i\n", masked);
         if (masked == true) {
             fprintf(stderr, "Masked bit has a non 0 value! Connection must be considered a FAIL!\n");
-            msg.error = EXIT_FAILURE; return msg;
+            msg.error = FAILURE; return msg;
         }
 
         uint64_t payload_size = header[1] & 0b01111111;
 
         if (payload_size == 126) {
-            if (recv(fd, (char*)&payload_size, sizeof(uint16_t), 0) < 0) {
+            if (recv(fd, (char*)&payload_size, sizeof(uint16_t), 0) <= 0) {
                 fprintf(stderr, "recv(): %s.\n", strerror(errno));
-                msg.error = EXIT_FAILURE; return msg;
+                msg.error = FAILURE; return msg;
             }
             payload_size = htons(payload_size);
         }
         else if (payload_size == 127) {
-            if (recv(fd, (char*)&payload_size, sizeof(uint64_t), 0) < 0) {
+            if (recv(fd, (char*)&payload_size, sizeof(uint64_t), 0) <= 0) {
                 fprintf(stderr, "recv(): %s.\n", strerror(errno));
-                msg.error = EXIT_FAILURE; return msg;
+                msg.error = FAILURE; return msg;
             }
 #if defined(_WIN32)
             payload_size = htonll(payload_size);
@@ -286,10 +301,10 @@ struct message websocket_recv(int fd) {
                 resizebuffer(((struct message_data*)msg.msgdata)->buffer, ((struct message_data*)msg.msgdata)->size + payload_size);
             }
             
-            if (recv(fd, (uint8_t*)(((struct message_data*)msg.msgdata)->buffer) + ((struct message_data*)msg.msgdata)->size, payload_size, MSG_WAITALL) < 0) {
+            if (recv(fd, (uint8_t*)(((struct message_data*)msg.msgdata)->buffer) + ((struct message_data*)msg.msgdata)->size, payload_size, MSG_WAITALL) <= 0) {
                 fprintf(stderr, "recv(): %s.\n", strerror(errno));
                 free(((struct message_data*)msg.msgdata)->buffer);
-                msg.error = EXIT_FAILURE; return msg;
+                msg.error = FAILURE; return msg;
             }
 
             printf("payload: ");

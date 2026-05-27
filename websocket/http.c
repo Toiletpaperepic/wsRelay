@@ -22,6 +22,7 @@
 #include <stdio.h>
 #include "wsrelay.h"
 #define RESIZEBUFFER_CUSTOM_ERROR 1
+#define STRING_TO_INT_CONVERSION 1
 #include "common.h"
 
 void appendchar(char** destinationstring, const char* sourcestring) { 
@@ -209,7 +210,11 @@ struct http_response_read_result read_http_response_header(int fd) {
         
         // printf("HTTP version: %s\n", httpversion);
 
-        ((struct http_response_read_result_success*)rrr.data)->httpcode = firstheader;
+        if (strtouint16(&((struct http_response_read_result_success*)rrr.data)->httpcode, firstheader)) {
+            fprintf(stderr, "strtouint16() Failed: invalid parameter.\n");
+            free(headerslist); rrr.error = FAILURE; return rrr;
+        }
+
         strgotocharuntil(&firstheader, ' ');
         *firstheader = '\0'; firstheader++;
 

@@ -8,7 +8,7 @@ struct http_header {
 
 struct http_response_read_result_success {
     const char* httpversion;
-    const char* httpcode; // we could change this into a int but a string is fine.
+    uint16_t httpcode; // we could change this into a int but a string is fine.
     unsigned int headerslist_len;
     struct http_header* headerslist;
     char buffer[1024];

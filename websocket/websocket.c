@@ -104,10 +104,10 @@ int websocket_connect(struct parsed_url purl) {
         return NEGFAILURE;
 
     struct http_response_read_result_success rrrs = *(struct http_response_read_result_success*)rrr.data;
-    printf("%s %s\n", getheaderfromlist("Connection", rrrs.headerslist_len, rrrs.headerslist)->header_name, getheaderfromlist("Connection", rrrs.headerslist_len, rrrs.headerslist)->header_content);
+    // printf("%s %s\n", getheaderfromlist("Connection", rrrs.headerslist_len, rrrs.headerslist)->header_name, getheaderfromlist("Connection", rrrs.headerslist_len, rrrs.headerslist)->header_content);
 
-    if (strcmp(rrrs.httpcode, "101") != 0) {
-        fprintf(stderr, "Server did not send a 101 response! (got %s)\n", rrrs.httpcode);
+    if (rrrs.httpcode != 101) {
+        fprintf(stderr, "Server did not send a 101 response! (got %hu)\n", rrrs.httpcode);
         free(rrrs.headerslist); return NEGFAILURE;
     }
 
@@ -120,6 +120,8 @@ int websocket_connect(struct parsed_url purl) {
         fprintf(stderr, "Server did not send a Upgrade header!\n");
         free(rrrs.headerslist); return NEGFAILURE;
     }
+
+    printf("Server successfully sent a good response!\n");
 
     free(rrrs.headerslist);
     return fd;

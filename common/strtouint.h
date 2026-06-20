@@ -2,6 +2,8 @@
 #define STRING_TO_INT_CONVERSION 0
 #endif
 
+#include <stdbool.h>
+
 #if STRING_TO_INT_CONVERSION
 // bool strtoint16(int16_t* result, const char* str);
 bool strtouint16(uint16_t* result, const char* str);

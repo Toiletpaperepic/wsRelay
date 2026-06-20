@@ -2,6 +2,7 @@
 #define LOGGER_COMPILE_OUT 1
 #endif
 
+#include <stdbool.h>
 #include <stdio.h>
 
 #if LOGGER_COMPILE_OUT 

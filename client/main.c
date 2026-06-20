@@ -317,7 +317,9 @@ void* route(void* ptrrd)
 }
 
 int main(int argc, char *argv[]) {
+#if LOGGER_COMPILE_OUT 
     setuplogger();
+#endif
 
     // make sure there is 0 required args here
     // first parse

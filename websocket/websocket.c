@@ -137,18 +137,18 @@ int websocket_send(int fd, void* buffer, uint64_t size, enum opcodes opcode, boo
     assert((byte0 & 0b01110000) == 0);
 
     byte1 = byte1 | 0b10000000; // masked is always true as a client.
-    unsigned int extraPayloadlength = 0;
+    unsigned int extra_payload_size_length = 0;
 
     if (size <= 125) { // size fits in 7 bits
         byte1 = byte1 | (uint8_t)size;
         TRACE("size is smaller then 125");
     } else if (size >= 125 && size < UINT16_MAX) { // size fits in 16 bits
         byte1 = byte1 | 126;
-        extraPayloadlength = sizeof(uint16_t);
+        extra_payload_size_length = sizeof(uint16_t);
         TRACE("size is smaller then UINT16_MAX");
     } else if (size >= 125 && size > UINT16_MAX && size < UINT64_MAX) { // size fits in 64 bits
         byte1 = byte1 | 127;
-        extraPayloadlength = sizeof(uint64_t);
+        extra_payload_size_length = sizeof(uint64_t);
         TRACE("size is smaller then UINT64_MAX");
     }
 
@@ -178,58 +178,81 @@ int websocket_send(int fd, void* buffer, uint64_t size, enum opcodes opcode, boo
     getrandom(&maskingkey, sizeof(maskingkey), 0);
 #endif
 
+#if LOGGER_COMPILE_OUT 
     if(getalt()->trace) {
         fprintf(stderr, MAG "[trace] " RESET "masking key: ");
         for (int i = 0; i < sizeof(maskingkey); i++)
             fprintf(stderr, "%X ", maskingkey[i]);
         fprintf(stderr, "\n");
     };
+#endif
 
-    size_t payload_size = 2 + extraPayloadlength + sizeof(maskingkey) + size;
+    size_t header_size = 2 + extra_payload_size_length + sizeof(maskingkey);
+    size_t payload_size = header_size + size;
     uint8_t* payload = malloc(payload_size);
 
     memcpy(payload, &byte0, sizeof(byte0));
     memcpy(payload + 1, &byte1, sizeof(byte1));
 
-    if (extraPayloadlength == sizeof(uint16_t)) {
+    if (extra_payload_size_length == sizeof(uint16_t)) {
 #if defined(_WIN32)
         uint16_t size_network_order = htons(size);
 #else
         uint16_t size_network_order = htobe16(size);
 #endif
-        memcpy(payload + 2, &size_network_order, extraPayloadlength);
-    } else if (extraPayloadlength == sizeof(uint64_t)) {
+        memcpy(payload + 2, &size_network_order, extra_payload_size_length);
+    } else if (extra_payload_size_length == sizeof(uint64_t)) {
 #if defined(_WIN32)
         uint64_t size_network_order = htonll(size);
 #else
         uint64_t size_network_order = htobe64(size);
 #endif
-        memcpy(payload + 2, &size_network_order, extraPayloadlength);
+        memcpy(payload + 2, &size_network_order, extra_payload_size_length);
     }
 
-    memcpy(payload + 2 + extraPayloadlength, maskingkey, sizeof(maskingkey));
+    memcpy(payload + 2 + extra_payload_size_length, maskingkey, sizeof(maskingkey));
 
     if (buffer == NULL && size == 0) {
         TRACE("no payload provided.");
     } else {
-        memcpy(payload + 2 + extraPayloadlength + sizeof(maskingkey), buffer, size);
-        
+        memcpy(payload + header_size, buffer, size);
+
+#if LOGGER_COMPILE_OUT 
         if(getalt()->trace) {
             fprintf(stderr, MAG "[trace] " RESET "payload: ");
             for (int i = 0; i < size; i++) {
-                fprintf(stderr, "%X ", payload[2 + extraPayloadlength + sizeof(maskingkey) + i]);
+                fprintf(stderr, "%X ", payload[header_size + i]);
             }
             fprintf(stderr, "\n");
         }
+#endif
         
         TRACE("payload (size): %zu", payload_size);
-        
-        if(getalt()->trace) {fprintf(stderr, MAG "[trace] " RESET "payload (masked): ");}
+
         for (int i = 0; i < size; i++) {
-            payload[2 + extraPayloadlength + sizeof(maskingkey) + i] = payload[2 + extraPayloadlength + sizeof(maskingkey) + i] ^ maskingkey[i % 4];
-            if(getalt()->trace) {fprintf(stderr, "%X ", payload[2 + extraPayloadlength + sizeof(maskingkey) + i]);}
+            /* 
+            From perf, this is the slowest operation of the entire codebase,
+            unfortunately i dont think theres anything i can do to fix this since this is required.
+            
+            running a speed test show 1711 download, and 305 upload (6/20/26). Not good over localhost :(
+            55.44%  wsrelay  libwsrelay-websocket.so.0.0.2  [.] websocket_send    
+            22.59 │160:   xor    %dl,-0x3(%r9,%rcx,1)
+            20.28 │       xor    %sil,-0x2(%r9,%rcx,1)
+            22.76 │       xor    %dil,-0x1(%r9,%rcx,1)
+            22.81 │       xor    %r8b,(%r9,%rcx,1)
+            */
+            payload[header_size + i] = payload[header_size + i] ^ maskingkey[i % 4];
         }
-        if(getalt()->trace) {fprintf(stderr,"\n");}
+
+#if LOGGER_COMPILE_OUT 
+        if(getalt()->trace) {
+            fprintf(stderr, MAG "[trace] " RESET "payload (masked): ");
+            for (int i = 0; i < size; i++) {
+                fprintf(stderr, "%X ", payload[header_size + i]);
+            }
+            fprintf(stderr,"\n");
+        }
+#endif
     }
 
     if (send(fd, payload, payload_size, 0) < 0) {
@@ -312,6 +335,7 @@ struct message websocket_recv(int fd) {
                 msg.error = FAILURE; return msg;
             }
 
+#if LOGGER_COMPILE_OUT 
             if(getalt()->trace) {
                 fprintf(stderr, MAG "[trace] " RESET "payload: ");
                 for (int i = 0; i < payload_size; i++) {
@@ -319,6 +343,7 @@ struct message websocket_recv(int fd) {
                 }
                 fprintf(stderr, "\n");
             }
+#endif
 
         }
 

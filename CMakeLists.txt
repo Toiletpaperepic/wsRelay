@@ -95,8 +95,11 @@ add_library(base64
 target_include_directories(base64 PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/utils/base64)
 
 add_library(common SHARED
-    common/common.c
-    common/common.h
+    common/strtouint.c
+    common/strtouint.h
+    common/logger.c
+    common/logger.h
+    common/macros.h
 )
 target_include_directories(common PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/common)
 set_target_properties(common PROPERTIES

@@ -30,13 +30,13 @@ struct parsed_url parse_url(const char* url) {
         }
     }
     
-    // printf("Protocol: %u\n", purl.protocol);
+    DEBUG("Protocol: %u", purl.protocol);
     
     assert(url[cursor] == ':' && url[cursor + 1] == '/' && url[cursor + 2] == '/');
     cursor += 3;
     
     for (int i = cursor; i < strlen(url); i++) {
-        // printf("%c\n", url[i]);
+        // DEBUG("%c", url[i]);
         
         if (url[i] == ':' || url[i] == '/') {
             purl.address = malloc(i - cursor + 1);
@@ -48,7 +48,7 @@ struct parsed_url parse_url(const char* url) {
         } 
     }
     
-    // printf("Address: %s\n", purl.address);
+    DEBUG("Address: %s", purl.address);
     
     if (url[cursor] == ':') {
         cursor += 1;
@@ -76,14 +76,14 @@ struct parsed_url parse_url(const char* url) {
         }
     }
 
-    // printf("Port: %d\n", purl.port);
+    DEBUG("Port: %d", purl.port);
 
     purl.path = malloc(strlen(url) - cursor + 1);
     strncpy(purl.path, url + cursor, strlen(url) - cursor + 1);
     purl.path[strlen(url) - cursor] = '\0';
     // cursor = strlen(url) - cursor + 1;
 
-    // printf("Path: %s\n", purl.path);
+    DEBUG("Path: %s", purl.path);
     
     return purl;
 }

@@ -3,14 +3,13 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdio.h>
 #define STRING_TO_INT_CONVERSION 1
 #include "common.h"
 #include "args.h"
 
 void print_description(struct Argument* nextarg) {
     while (true) {
-        printf("    --%s - %s\n", nextarg->name, nextarg->description);
+        print("    --%s - %s", nextarg->name, nextarg->description);
     
         if (nextarg->next == NULL) {
             break;
@@ -55,7 +54,7 @@ bool parse_args(int argc, char *argv[], struct Argument* registerargs, bool igno
                             nextarg->value = malloc(sizeof(unsigned int));
                             unsigned int x = 0;
                             if (strtouint32(&x, argv[i + 1])) {
-                                fprintf(stderr, "strtouint32() Failed: invalid parameter.\n");
+                                ERROR("strtouint32() Failed: invalid parameter.");
                                 return true;
                             }
                             memcpy(nextarg->value, &x, sizeof(unsigned int));
@@ -65,7 +64,7 @@ bool parse_args(int argc, char *argv[], struct Argument* registerargs, bool igno
                             nextarg->value = malloc(sizeof(int));
                             int y = 0;
                             if (strtoint32(&y, argv[i + 1])) {
-                                fprintf(stderr, "strtoint32() Failed: invalid parameter.\n");
+                                ERROR("strtoint32() Failed: invalid parameter.");
                                 return true;
                             }
                             memcpy(nextarg->value, &y, sizeof(int));
@@ -79,7 +78,7 @@ bool parse_args(int argc, char *argv[], struct Argument* registerargs, bool igno
                             return true;
                     }
                 } else {
-                    printf("Missing operand.\n");
+                    ERROR("Missing operand.\n");
                     return true;
                 }
 
@@ -90,7 +89,7 @@ bool parse_args(int argc, char *argv[], struct Argument* registerargs, bool igno
                 if (ignore_unknowns) {
                     return false;
                 } else {
-                    printf("Unknown command: %s\n", argv[i]);
+                    ERROR("Unknown command: %s", argv[i]);
 
                     return true;
                 }
@@ -105,7 +104,7 @@ bool parse_args(int argc, char *argv[], struct Argument* registerargs, bool igno
         assert(nextarg->type == IS_BOOL ? nextarg->required != true : true); // required is NOT allowed if the type is a bool.
     
         if (nextarg->value == NULL && nextarg->required == true) {
-            printf("Argument --%s is required.\n", nextarg->name);
+            ERROR("Argument --%s is required.", nextarg->name);
             return true;
         }
     

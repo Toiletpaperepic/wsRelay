@@ -1,6 +1,5 @@
 #if defined(_WIN32)
 #include <windows.h>
-// #include <stdio.h>
 #else 
 #if defined(__ANDROID__) && __ANDROID_API__ < 28
 #include <sys/syscall.h>
@@ -19,7 +18,6 @@
 #include <string.h>
 #include <limits.h>
 #include <errno.h>
-#include <stdio.h>
 #include "wsrelay.h"
 #define RESIZEBUFFER_CUSTOM_ERROR 1
 #define STRING_TO_INT_CONVERSION 1
@@ -57,7 +55,7 @@ void make_user_agent(char** destinationstring) {
     char hostname[HOST_NAME_MAX];
 #endif
     if (gethostname(hostname, sizeof(hostname)) < 0) {
-        fprintf(stderr, "gethostname(): %s.\n", strerror(errno));
+        ERROR("gethostname(): %s.", strerror(errno));
     } else {
         appendchar(destinationstring, "Hostname/");
         appendchar(destinationstring, hostname);
@@ -101,19 +99,19 @@ const char* make_http_header(struct parsed_url purl) {
 
     error = BCryptOpenAlgorithmProvider(&handle, BCRYPT_RNG_ALGORITHM,NULL,0);
     if (!BCRYPT_SUCCESS(error)) {
-        fprintf(stderr, "BCryptOpenAlgorithmProvider(): %lX.\n", error);
+        ERRRO("BCryptOpenAlgorithmProvider(): %lX.", error);
         exit(EXIT_FAILURE);
     }
     
     error = BCryptGenRandom(handle, (PUCHAR)nonce, sizeof(nonce), 0);
     if (!BCRYPT_SUCCESS(error)) {
-        fprintf(stderr, "BCryptGenRandom(): %lX.\n", error);
+        ERROR(stderr, "BCryptGenRandom(): %lX.", error);
         exit(EXIT_FAILURE);
     }
     
     error = BCryptCloseAlgorithmProvider(handle,0);
     if (!BCRYPT_SUCCESS(error)) {
-        fprintf(stderr, "BCryptCloseAlgorithmProvider(): %lX.\n", error);
+        ERROR("BCryptCloseAlgorithmProvider(): %lX.", error);
         exit(EXIT_FAILURE);
     }
 #else
@@ -154,44 +152,44 @@ struct http_response_read_result read_http_response_header(int fd) {
     {
         unsigned int cursor = 4;
 
-        if (recv(fd, ((struct http_response_read_result_success*)rrr.data)->buffer, cursor, MSG_WAITALL) < 0) {
-            fprintf(stderr, "recv(): %s.\n", strerror(errno));
+        if (recv(fd, ((struct http_response_read_result_successful*)rrr.data)->buffer, cursor, MSG_WAITALL) < 0) {
+            ERROR("recv(): %s.", strerror(errno));
             close(fd);
             rrr.error = FAILURE; return rrr;
         }
         
         // recvive until we reach \r\n\r\n
-        for (; !(((struct http_response_read_result_success*)rrr.data)->buffer[cursor - 4] == '\r' && ((struct http_response_read_result_success*)rrr.data)->buffer[cursor - 3] == '\n' && ((struct http_response_read_result_success*)rrr.data)->buffer[cursor - 2] == '\r' && ((struct http_response_read_result_success*)rrr.data)->buffer[cursor - 1] == '\n'); cursor++) {
-            if (cursor > sizeof(((struct http_response_read_result_success*)rrr.data)->buffer)) {
-                fprintf(stderr, "Respose buffer is full! Considering read as a FAILURE!\n");
+        for (; !(((struct http_response_read_result_successful*)rrr.data)->buffer[cursor - 4] == '\r' && ((struct http_response_read_result_successful*)rrr.data)->buffer[cursor - 3] == '\n' && ((struct http_response_read_result_successful*)rrr.data)->buffer[cursor - 2] == '\r' && ((struct http_response_read_result_successful*)rrr.data)->buffer[cursor - 1] == '\n'); cursor++) {
+            if (cursor > sizeof(((struct http_response_read_result_successful*)rrr.data)->buffer)) {
+                ERROR("Respose buffer is full! Considering read as a FAILURE!");
                 rrr.error = FAILURE; return rrr;
             }
     
-            if (recv(fd, ((struct http_response_read_result_success*)rrr.data)->buffer + cursor, 1, MSG_WAITALL) < 0) {
-                fprintf(stderr, "recv(): %s.\n", strerror(errno));
+            if (recv(fd, ((struct http_response_read_result_successful*)rrr.data)->buffer + cursor, 1, MSG_WAITALL) < 0) {
+                ERROR("recv(): %s.", strerror(errno));
                 close(fd);
                 rrr.error = FAILURE; return rrr;
             }
         }
     
-        ((struct http_response_read_result_success*)rrr.data)->buffer[cursor] = '\0';
+        ((struct http_response_read_result_successful*)rrr.data)->buffer[cursor] = '\0';
         unsigned int response_size = cursor - 4;
     
-        printf("received accept message with size of %i, %s\n", response_size - 1, ((struct http_response_read_result_success*)rrr.data)->buffer);
+        DEBUG("received accept message with size of %i, %s\n", response_size - 1, ((struct http_response_read_result_successful*)rrr.data)->buffer);
     }
 
-    ((struct http_response_read_result_success*)rrr.data)->headerslist_len = 1;
-    char** headerslist = malloc(((struct http_response_read_result_success*)rrr.data)->headerslist_len * sizeof(* headerslist));
+    ((struct http_response_read_result_successful*)rrr.data)->headerslist_len = 1;
+    char** headerslist = malloc(((struct http_response_read_result_successful*)rrr.data)->headerslist_len * sizeof(* headerslist));
 
     // part 2: split headers
     {
         char *ch;
-        ch = strtok(((struct http_response_read_result_success*)rrr.data)->buffer, "\r\n");
+        ch = strtok(((struct http_response_read_result_successful*)rrr.data)->buffer, "\r\n");
         while (ch != NULL) {
-            headerslist[((struct http_response_read_result_success*)rrr.data)->headerslist_len - 1] = ch;
-            ((struct http_response_read_result_success*)rrr.data)->headerslist_len++;
+            headerslist[((struct http_response_read_result_successful*)rrr.data)->headerslist_len - 1] = ch;
+            ((struct http_response_read_result_successful*)rrr.data)->headerslist_len++;
 
-            resizebuffer(headerslist, ((struct http_response_read_result_success*)rrr.data)->headerslist_len * sizeof(* headerslist), free(headerslist); rrr.error = FAILURE; return rrr;, true);
+            resizebuffer(headerslist, ((struct http_response_read_result_successful*)rrr.data)->headerslist_len * sizeof(* headerslist), free(headerslist); rrr.error = FAILURE; return rrr;, true);
 
             ch = strtok(NULL, "\r\n");
         }
@@ -199,33 +197,35 @@ struct http_response_read_result read_http_response_header(int fd) {
 
     // part 3: now check if we got a good response on the first header.
     {
-        char* firstheader = headerslist[0];
+        char* firstheadercursor = headerslist[0];
 
-        strgotocharuntil(&firstheader, '/');
-        firstheader++;
-        ((struct http_response_read_result_success*)rrr.data)->httpversion = firstheader;
+        strgotocharuntil(&firstheadercursor, '/');
+        firstheadercursor++;
+        ((struct http_response_read_result_successful*)rrr.data)->httpversion = firstheadercursor;
         
-        strgotocharuntil(&firstheader, ' ');
-        *firstheader = '\0'; firstheader++;
+        strgotocharuntil(&firstheadercursor, ' ');
+        *firstheadercursor = '\0'; firstheadercursor++;
         
-        // printf("HTTP version: %s\n", httpversion);
+        char* strhttpcode = firstheadercursor;
+        
+        DEBUG("HTTP version: %s", ((struct http_response_read_result_successful*)rrr.data)->httpversion);
 
-        if (strtouint16(&((struct http_response_read_result_success*)rrr.data)->httpcode, firstheader)) {
-            fprintf(stderr, "strtouint16() Failed: invalid parameter.\n");
+        strgotocharuntil(&firstheadercursor, ' ');
+        *firstheadercursor = '\0'; firstheadercursor++;
+
+        if (strtouint16(&((struct http_response_read_result_successful*)rrr.data)->httpcode, strhttpcode)) {
+            ERROR("strtouint16() Failed: invalid parameter.");
             free(headerslist); rrr.error = FAILURE; return rrr;
         }
 
-        strgotocharuntil(&firstheader, ' ');
-        *firstheader = '\0'; firstheader++;
-
-        // printf("HTTP code: %s\n", httpcode);
+        DEBUG("HTTP code: %hu", ((struct http_response_read_result_successful*)rrr.data)->httpcode);
     }
 
-    ((struct http_response_read_result_success*)rrr.data)->headerslist = malloc(((struct http_response_read_result_success*)rrr.data)->headerslist_len * sizeof(* ((struct http_response_read_result_success*)rrr.data)->headerslist));
+    ((struct http_response_read_result_successful*)rrr.data)->headerslist = malloc(((struct http_response_read_result_successful*)rrr.data)->headerslist_len * sizeof(* ((struct http_response_read_result_successful*)rrr.data)->headerslist));
     
     // part 4: split headerslist into two parts (name, content).
     {
-        for (int i = 1; i < ((struct http_response_read_result_success*)rrr.data)->headerslist_len - 1; i++) {
+        for (int i = 1; i < ((struct http_response_read_result_successful*)rrr.data)->headerslist_len - 1; i++) {
             char* header_start = headerslist[i];
             char* header = header_start;
 
@@ -236,11 +236,11 @@ struct http_response_read_result read_http_response_header(int fd) {
             }
             header++;
             
-            ((struct http_response_read_result_success*)rrr.data)->headerslist[i].header_name = header_start;
-            ((struct http_response_read_result_success*)rrr.data)->headerslist[i].header_content = header;
+            ((struct http_response_read_result_successful*)rrr.data)->headerslist[i].header_name = header_start;
+            ((struct http_response_read_result_successful*)rrr.data)->headerslist[i].header_content = header;
 
-            // printf("header name: %s\n", ((struct http_response_read_result_success*)rrr.data)->headerslist[i].header_name);
-            // printf("header content: %s\n", ((struct http_response_read_result_success*)rrr.data)->headerslist[i].header_content);
+            DEBUG("header name: %s", ((struct http_response_read_result_successful*)rrr.data)->headerslist[i].header_name);
+            DEBUG("header content: %s", ((struct http_response_read_result_successful*)rrr.data)->headerslist[i].header_content);
         }
     }
 

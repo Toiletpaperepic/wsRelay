@@ -94,11 +94,17 @@ add_library(base64
 
 target_include_directories(base64 PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/utils/base64)
 
-add_library(common
+add_library(common SHARED
     common/common.c
     common/common.h
 )
 target_include_directories(common PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/common)
+set_target_properties(common PROPERTIES
+    OUTPUT_NAME ${PROJECT_NAME}-common
+    VERSION ${CMAKE_PROJECT_VERSION}
+    SOVERSION 1
+)
+install(TARGETS common LIBRARY DESTINATION lib)
 
 if(NOT HAVE___BUILTIN_ADD_OVERFLOW AND NOT HAVE___BUILTIN_MUL_OVERFLOW AND NOT HAVE_STDCKDINT_H)
     file(DOWNLOAD https://github.com/jart/jtckdint/raw/refs/heads/master/jtckdint.h ${CMAKE_CURRENT_BINARY_DIR}/downloads/include/jtckdint.h SHOW_PROGRESS EXPECTED_HASH SHA256=4a2bbbf4992384c17a332bfb3b4246f90bb84aa9b3282e1b966091981f1c2bb7)

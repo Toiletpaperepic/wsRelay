@@ -2,7 +2,6 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdio.h>
 #include "../../client/args.h"
 #define CHECK_CUSTOM_ERROR_HANDLE 1
 #include "check.h"
@@ -24,22 +23,22 @@ int main() {
         rcheck(parse_args(argc, argv, &arg4, false) != true, "parsing command line failed.", return_error = EXIT_FAILURE; goto error;);
 
         check((bool)arg0.value != true, return_error = EXIT_FAILURE; goto error;);
-        printf("%s\n", (bool)arg0.value ? "True" : "False");
+        INFO("%s", (bool)arg0.value ? "True" : "False");
 
         check((bool)arg1.value != false, return_error = EXIT_FAILURE; goto error;);
-        printf("%s\n", (bool)arg1.value ? "True" : "False");
+        INFO("%s", (bool)arg1.value ? "True" : "False");
 
         check(arg2.value != NULL, return_error = EXIT_FAILURE; goto error;);
         check(strcmp("Hello, World!", (char*)arg2.value) == 0, return_error = EXIT_FAILURE; goto error;);
-        printf("%s\n", (char*)arg2.value);
+        INFO("%s", (char*)arg2.value);
         
         check(arg3.value != NULL, return_error = EXIT_FAILURE; goto error;);
         check(-1 == *(int*)arg3.value, return_error = EXIT_FAILURE; goto error;);
-        printf("%i\n", *(int*)arg3.value);
+        INFO("%i", *(int*)arg3.value);
 
         check(arg4.value != NULL, return_error = EXIT_FAILURE; goto error;);
         check(1 == *(unsigned int*)arg4.value, return_error = EXIT_FAILURE; goto error;);
-        printf("%i\n", *(int*)arg4.value);
+        INFO("%i", *(int*)arg4.value);
         
 error:
         cleanup_args(&arg4);

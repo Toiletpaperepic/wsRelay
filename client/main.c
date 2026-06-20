@@ -30,7 +30,6 @@
 #include <signal.h>
 #include <stddef.h>
 #include <errno.h>
-#include <stdio.h>
 #define RESIZEBUFFER_CUSTOM_ERROR 1
 #include "wsrelay.h"
 #include "socket.h"
@@ -40,12 +39,12 @@
 volatile sig_atomic_t status = 0;
 
 static void catch_function(int signo) {
-    printf("Recive interrupt. Now exiting, bye bye!\n");
+    WARN("Recive interrupt. Now exiting, bye bye!");
     status = signo;
 }
 
 void version() {
-    printf("wsRelay %s\n", __PROJECT_VERSION__);
+    print("wsRelay %s", __PROJECT_VERSION__);
     char* message = malloc(1);
     message[0] = '\0';
     make_user_agent(&message);
@@ -54,7 +53,7 @@ void version() {
 }
 
 void help(const char* programname, struct Argument* firstarglist, struct Argument* secondarglist) {
-    printf("Usage: %s --out-url <url> [options]\n", programname);
+    print("Usage: %s --out-url <url> [options]", programname);
     print_description(firstarglist);
     print_description(secondarglist);
 }
@@ -93,13 +92,13 @@ enum thread_error inbound(int in_socket_fd, int out_websocket_fd) {
     int bytesrecv = recv(in_socket_fd, buffer, sizeof(buffer), 0);
 
     if (bytesrecv < 0) {
-        fprintf(stderr, "recv(): %s.\n", strerror(errno));
+        ERROR("recv(): %s.", strerror(errno));
         return READ_ERROR;
     } else if (bytesrecv == 0) {
-        printf("inbound disconnected.\n");
+        WARN("inbound disconnected.");
 
         if (websocket_send(out_websocket_fd, NULL, 0, CLOSE, true)) {
-            fprintf(stderr,"websocket_send() failed to send!");
+            ERROR("websocket_send() failed to send!");
             return WRITE_ERROR;
         }
 
@@ -107,7 +106,7 @@ enum thread_error inbound(int in_socket_fd, int out_websocket_fd) {
     }
     
     if (websocket_send(out_websocket_fd, buffer, bytesrecv, BINARY, true)) {
-        fprintf(stderr,"websocket_send() failed to send!");
+        ERROR("websocket_send() failed to send!");
         return WRITE_ERROR;
     }
 
@@ -120,7 +119,7 @@ enum thread_error outbound(int in_socket_fd, int out_websocket_fd) {
         assert(((struct message_data*)msg.msgdata)->opcode != CONTINUATION); // should've already been handled.
         
         if (((struct message_data*)msg.msgdata)->opcode == CLOSE) {
-            printf("Websocket closed");
+            DEBUG("Websocket closed");
             
             if (((struct message_data*)msg.msgdata)->size > 0) {
                 uint16_t statuscode = 0;
@@ -130,22 +129,22 @@ enum thread_error outbound(int in_socket_fd, int out_websocket_fd) {
 #else
                 statuscode = be16toh(statuscode);
 #endif
-                printf(", status code: %i", statuscode);
+                DEBUG("status code: %i", statuscode);
                 
                 size_t sizeofreason = ((struct message_data*)msg.msgdata)->size - sizeof(statuscode) + 1;
                 char* reason = malloc(sizeofreason);
                 memcpy(reason, (uint8_t*)(((struct message_data*)msg.msgdata)->buffer) + sizeof(statuscode), ((struct message_data*)msg.msgdata)->size - sizeof(statuscode));
                 reason[sizeofreason - 1] = '\0';
-                printf(", reason: %s\n", reason);
+                DEBUG("reason: %s", reason);
                 free(reason);
             } else if (((struct message_data*)msg.msgdata)->size > 123) {
-                printf(", CloseFrame size too big! Not reading...\n");
+                ERROR("CloseFrame size too big! Not reading...");
             } else {
-                printf(", No close frame provided.\n");
+                WARN("No close frame provided.");
             }
 
             if (websocket_send(out_websocket_fd, NULL, 0, CLOSE, true)) {
-                fprintf(stderr,"websocket_send() failed to send!");
+                ERROR("websocket_send() failed to send!");
                 free(((struct message_data*)msg.msgdata)->buffer);
                 return WRITE_ERROR;
             }
@@ -153,10 +152,10 @@ enum thread_error outbound(int in_socket_fd, int out_websocket_fd) {
             free(((struct message_data*)msg.msgdata)->buffer);
             return OUTBOUND_DISCONNECTED_SAFELY;
         } else if (((struct message_data*)msg.msgdata)->opcode == TEXT) {
-            printf("Unsupported opcode.\n");
+            WARN("Unsupported opcode.");
         } else if (((struct message_data*)msg.msgdata)->opcode == PING) {
             if (websocket_send(out_websocket_fd, NULL, 0, PONG, true)) {
-                fprintf(stderr,"websocket_send() failed to send!");
+                ERROR("websocket_send() failed to send!");
                 free(((struct message_data*)msg.msgdata)->buffer);
                 return WRITE_ERROR;
             }
@@ -164,7 +163,7 @@ enum thread_error outbound(int in_socket_fd, int out_websocket_fd) {
             // ...
         } else if (((struct message_data*)msg.msgdata)->opcode == BINARY) {
             if (send(in_socket_fd, ((struct message_data*)msg.msgdata)->buffer, ((struct message_data*)msg.msgdata)->size, 0) < 0) {
-                fprintf(stderr, "send(): %s.\n", strerror(errno));
+                ERROR("send(): %s.", strerror(errno));
                 free(((struct message_data*)msg.msgdata)->buffer);
                 return WRITE_ERROR;
             }
@@ -172,7 +171,7 @@ enum thread_error outbound(int in_socket_fd, int out_websocket_fd) {
 
         free(((struct message_data*)msg.msgdata)->buffer);
     } else {
-        fprintf(stderr, "websocket_recv() failed to receive!\n");
+        ERROR("websocket_recv() failed to receive!");
         if (((struct message_data*)msg.msgdata)->buffer != NULL) // unknown state but lets make sure
             free(((struct message_data*)msg.msgdata)->buffer);
         return READ_ERROR;
@@ -191,7 +190,7 @@ void* route(void* ptrrd)
     struct routedata rd;
     memcpy(&rd, ptrrd, sizeof(struct routedata));
     
-    printf("Route thread started!\n");
+    DEBUG("Route thread started!");
     enum thread_error error = 0;
     int timeout = 1000 * 5;
 
@@ -199,7 +198,7 @@ void* route(void* ptrrd)
     // create a epoll file discriptor
     int epollfd = epoll_create1(0);
     if (epollfd < 0) {
-        fprintf(stderr, "epoll_create1(): %s.\n", strerror(errno));
+        ERROR("epoll_create1(): %s.", strerror(errno));
         error = POLL_ERROR;
     }
 
@@ -208,7 +207,7 @@ void* route(void* ptrrd)
     epolleventlocalsocket.data.u32 = ROUTE_CLIENT_CONNECTION;
     epolleventlocalsocket.events = EPOLLIN;
     if (epoll_ctl(epollfd, EPOLL_CTL_ADD, rd.in_socket_fd, &epolleventlocalsocket) < 0) {
-        fprintf(stderr, "epoll_ctl(): %s.\n", strerror(errno));
+        ERROR("epoll_ctl(): %s.", strerror(errno));
         error = POLL_ERROR;
     }
 
@@ -216,18 +215,18 @@ void* route(void* ptrrd)
     epolleventwebsocket.data.u32 = ROUTE_SERVER_WEBSOCKET_CONNECTION;
     epolleventwebsocket.events = EPOLLIN;
     if (epoll_ctl(epollfd, EPOLL_CTL_ADD, rd.out_websocket_fd, &epolleventwebsocket) < 0) {
-        fprintf(stderr, "epoll_ctl(): %s.\n", strerror(errno));
+        ERROR("epoll_ctl(): %s.", strerror(errno));
         error = POLL_ERROR;
     }
 
     while (status != SIGINT && error == 0) {
         struct epoll_event epe[2];
         
-        printf("waiting for packets...\n");
+        // DEBUG("waiting for packets...");
         int fdevents = epoll_wait(epollfd, epe, sizeof(epe) / sizeof(struct epoll_event), timeout);
 
         if (fdevents < 0)  {
-            fprintf(stderr, "epoll_wait(): %s.\n", strerror(errno));
+            ERROR("epoll_wait(): %s.", strerror(errno));
             error = POLL_ERROR;
         } else if (fdevents == 0) {
             // not ready
@@ -257,7 +256,7 @@ void* route(void* ptrrd)
     fds[1].fd = rd.out_websocket_fd;
 
     while (status != SIGINT && error == 0) {
-        printf("waiting for packets...\n");
+        // DEBUG("waiting for packets...");
         int pollret = 
 #if HAVE_WSAPOLL
         WSAPoll
@@ -267,11 +266,11 @@ void* route(void* ptrrd)
         (fds, sizeof(fds) / sizeof(struct pollfd), timeout);
 
         if (pollret < 0) {
-            fprintf(stderr, 
+            ERROR( 
 #if HAVE_WSAPOLL
-                "WSAPoll(): %s.\n"
+                "WSAPoll(): %s."
 #elif HAVE_POLL_H
-                "poll(): %s.\n"
+                "poll(): %s."
 #endif
                 , strerror(errno));
             error = POLL_ERROR;
@@ -297,14 +296,14 @@ void* route(void* ptrrd)
     }
 #endif
 
-    printf("Route thread exiting...\n");
+    DEBUG("Route thread exiting...");
     // TODO: this would be more nicer if these were macros.
     if (close(rd.in_socket_fd) < 0 && close(rd.out_websocket_fd) < 0  
 #if HAVE_SYS_EPOLL_H
         && close(epollfd) < 0
 #endif
     ) {
-        fprintf(stderr, "close(): %s.\n", strerror(errno));
+        ERROR("close(): %s.", strerror(errno));
         error = CLOSE_ERROR;
     }
      
@@ -318,6 +317,8 @@ void* route(void* ptrrd)
 }
 
 int main(int argc, char *argv[]) {
+    setuplogger();
+
     // make sure there is 0 required args here
     // first parse
     register_argument(argversion, NULL, "version", IS_BOOL, false, "Display program version information.")
@@ -348,7 +349,7 @@ int main(int argc, char *argv[]) {
 
     struct parsed_url purl = parse_url(argaddress.value);
     if (purl.protocol == unknown) {
-        fprintf(stderr, "Unknown protocol.\n");
+        ERROR("Unknown protocol.");
         cleanup_args(&argport);
         free((void*)purl.address);
         free((void*)purl.path);
@@ -359,7 +360,7 @@ int main(int argc, char *argv[]) {
     if (argport.value == NULL) {
         port = 48375;
     } else if (*(int*)argport.value > UINT16_MAX) {
-        printf("invalid port.\n");
+        ERROR("invalid port.");
         cleanup_args(&argport);
         free((void*)purl.address);
         free((void*)purl.path);
@@ -370,8 +371,7 @@ int main(int argc, char *argv[]) {
 
     cleanup_args(&argport);
     
-    printf("Starting local connection...\n");
-
+    INFO("Starting local connection...");
 
 #if defined(_WIN32)
     // todo: windows specific version
@@ -382,17 +382,17 @@ int main(int argc, char *argv[]) {
     // begin loading Ws2_32.dll
     err = WSAStartup(MAKEWORD(2, 2), &wsaData);
     if (err != 0) {
-        printf("WSAStartup failed with error: %d\n", err);
+        ERROR("WSAStartup failed with error: %d", err);
         return EXIT_FAILURE;
     }
     
     //verify that we have the correct version
     if (LOBYTE(wsaData.wVersion) != 2 || HIBYTE(wsaData.wVersion) != 2) {
-        fprintf(stderr, "Could not find a usable version of Winsock.dll...\n");
+        ERROR(stderr, "Could not find a usable version of Winsock.dll...");
         WSACleanup();
         return 1;
     } else {
-        printf("Valid Winsock dll (v2.2) was found!\n");
+        DEBUG("Valid Winsock dll (v2.2) was found!");
     }
 #else
     struct sigaction a;
@@ -400,7 +400,7 @@ int main(int argc, char *argv[]) {
     a.sa_flags = 0;
     sigemptyset( &a.sa_mask );
     if (sigaction( SIGINT, &a, NULL ) < 0) {
-        fprintf(stderr, "An error occurred while setting up a signal handler! %s.\n", strerror(errno));
+        ERROR("An error occurred while setting up a signal handler! %s.", strerror(errno));
         free((void*)purl.address);
         free((void*)purl.path);
         return EXIT_FAILURE;
@@ -409,14 +409,14 @@ int main(int argc, char *argv[]) {
 
     int socket = socket_bind(INADDR_ANY, port);
     if (socket < 0) {
-        fprintf(stderr, "socket failed to bind! exiting...\n");
+        ERROR("socket failed to bind! exiting...");
         free((void*)purl.address);
         free((void*)purl.path);
         return EXIT_FAILURE;
     }
 
     if (listen(socket, 0) < 0) {
-        fprintf(stderr, "listen(): %s.\n", strerror(errno));
+        ERROR("listen(): %s.", strerror(errno));
         free((void*)purl.address);
         free((void*)purl.path);
         return EXIT_FAILURE;
@@ -432,16 +432,16 @@ int main(int argc, char *argv[]) {
         threadroutes[threadroutes_total - 1]->out_url = &purl;
         threadroutes[threadroutes_total - 1]->in_socket_fd = accept(socket, NULL, NULL);
         if (threadroutes[threadroutes_total - 1]->in_socket_fd < 0) {
-            fprintf(stderr, "failed to accept a new connection. %s.\n", strerror(errno));
+            ERROR("failed to accept a new connection. %s.", strerror(errno));
             free(threadroutes[threadroutes_total - 1]);
             continue;
         }
 
         // start a new websocket connection
-        printf("Starting websocket connection...\n");
+        INFO("Starting websocket connection...");
         threadroutes[threadroutes_total - 1]->out_websocket_fd = websocket_connect(purl);
         if (threadroutes[threadroutes_total - 1]->out_websocket_fd < 0) {
-            fprintf(stderr, "failed to accept a new websocket connection.\n");
+            ERROR("failed to accept a new websocket connection.");
             close(threadroutes[threadroutes_total - 1]->in_socket_fd);
             free(threadroutes[threadroutes_total - 1]);
             continue;
@@ -473,7 +473,7 @@ int main(int argc, char *argv[]) {
         pthread_join(threadroutes[i]->thread, (void*)&return_val);
 #endif
         free(threadroutes[i]);
-        printf("Thread[%i] exited with exitcode %i\n", i, *return_val);
+        DEBUG("Thread[%i] exited with exitcode %i", i, *return_val);
         free(return_val);
     }
 
@@ -482,7 +482,7 @@ int main(int argc, char *argv[]) {
     free((void*)purl.path);
     
     if (close(socket) < 0) {
-        fprintf(stderr, "close(): %s.\n", strerror(errno));
+        ERROR("close(): %s.", strerror(errno));
         return_error = EXIT_FAILURE;
     }
 

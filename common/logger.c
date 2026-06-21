@@ -1,5 +1,5 @@
 #include "logger.h"
-#if LOGGER_COMPILE_OUT 
+#if LOGGER_COMPILE_OUT != 1 
 #include <stdlib.h>
 #include <string.h>
 

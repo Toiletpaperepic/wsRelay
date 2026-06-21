@@ -9,7 +9,7 @@
     if (expression) {                                                                                \
                                                                                                      \
     } else {                                                                                         \
-        ERROR("check \"%s\" failed on %s:%i", #expression, __FILE__, __LINE__);          \
+        error("check \"%s\" failed on %s:%i", #expression, __FILE__, __LINE__);          \
         custom_error_handle                                                                          \
     }                                                                                                \
 
@@ -17,7 +17,7 @@
     if (expression){                                                                                                     \
                                                                                                                          \
     } else {                                                                                                             \
-        ERROR("check \"%s\" failed on %s:%i, reason: %s", #expression, __FILE__, __LINE__, reason);          \
+        error("check \"%s\" failed on %s:%i, reason: %s", #expression, __FILE__, __LINE__, reason);          \
         custom_error_handle                                                                                              \
     }                                                                                                                    \
 
@@ -26,7 +26,7 @@
     if (expression) {                                                                                \
                                                                                                      \
     } else {                                                                                         \
-        ERROR("check \"%s\" failed on %s:%i", #expression, __FILE__, __LINE__);          \
+        error("check \"%s\" failed on %s:%i", #expression, __FILE__, __LINE__);          \
         return 1;                                                                                    \
     }                                                                                                \
 
@@ -34,7 +34,7 @@
     if (expression){                                                                                                     \
                                                                                                                          \
     } else {                                                                                                             \
-        ERROR("check \"%s\" failed on %s:%i, reason: %s", #expression, __FILE__, __LINE__, reason);          \
+        error("check \"%s\" failed on %s:%i, reason: %s", #expression, __FILE__, __LINE__, reason);          \
         return 1;                                                                                                        \
     }                                                                                                                    \
 

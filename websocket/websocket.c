@@ -42,12 +42,12 @@ int websocket_connect(struct parsed_url purl) {
     if (error != 0) {
 #if !defined(_WIN32)
         if (error == EAI_SYSTEM) {
-            ERROR("getaddrinfo: %s", strerror(errno));
+            error("getaddrinfo: %s", strerror(errno));
         } else {
-            ERROR("getaddrinfo: gai_strerror: %s", gai_strerror(error));
+            error("getaddrinfo: gai_strerror: %s", gai_strerror(error));
         }
 #else
-        ERROR("getaddrinfo: %i", WSAGetLastError());
+        error("getaddrinfo: %i", WSAGetLastError());
 #endif
         return -1;
     }
@@ -58,20 +58,20 @@ int websocket_connect(struct parsed_url purl) {
     for (ai = result; ai != NULL && !success; ai = ai->ai_next) {
         fd = socket(ai->ai_family, ai->ai_socktype, ai->ai_protocol);
         if (fd < 0) {
-            ERROR("socket(): %s.", strerror(errno));
+            error("socket(): %s.", strerror(errno));
             continue;
         }
 
         if (ai->ai_family == AF_INET) {
-            DEBUG("using ipv4.");
+            debug("using ipv4.");
             ((struct sockaddr_in*)ai->ai_addr)->sin_port = htons(purl.port);
         } else if (ai->ai_family == AF_INET6) {
-            DEBUG("using ipv6.");
+            debug("using ipv6.");
             ((struct sockaddr_in6*)ai->ai_addr)->sin6_port = htons(purl.port);
         }
         
         if (connect(fd, ai->ai_addr, ai->ai_addrlen) < 0) {
-            ERROR("connect(): %s.", strerror(errno));
+            error("connect(): %s.", strerror(errno));
             continue;
         }
 
@@ -83,14 +83,14 @@ int websocket_connect(struct parsed_url purl) {
     if (!success)
         return NEGFAILURE;
     else
-        DEBUG("successfuly connected to a server using getaddrinfo!\n");
+        debug("successfuly connected to a server using getaddrinfo!\n");
 
     // tell the server to upgrade the connection 
     const char* message = make_http_header(purl);
-    DEBUG("Sending message: %s", message);
+    debug("Sending message: %s", message);
 
     if (send(fd, message, strlen(message), 0) < 0) {
-        ERROR("send(): %s.\n", strerror(errno));
+        error("send(): %s.\n", strerror(errno));
         free((void*)message);
         close(fd);
         return -1;
@@ -103,24 +103,24 @@ int websocket_connect(struct parsed_url purl) {
         return NEGFAILURE;
 
     struct http_response_read_result_successful rrrs = *(struct http_response_read_result_successful*)rrr.data;
-    // DEBUG("%s %s", getheaderfromlist("Connection", rrrs.headerslist_len, rrrs.headerslist)->header_name, getheaderfromlist("Connection", rrrs.headerslist_len, rrrs.headerslist)->header_content);
+    // debug("%s %s", getheaderfromlist("Connection", rrrs.headerslist_len, rrrs.headerslist)->header_name, getheaderfromlist("Connection", rrrs.headerslist_len, rrrs.headerslist)->header_content);
 
     if (rrrs.httpcode != 101) {
-        ERROR("Server did not send a 101 response! (got %hu)", rrrs.httpcode);
+        error("Server did not send a 101 response! (got %hu)", rrrs.httpcode);
         free(rrrs.headerslist); return NEGFAILURE;
     }
 
     if (getheaderfromlist("Connection", rrrs.headerslist_len, rrrs.headerslist) == NULL) {
-        ERROR("Server did not send a Connection header!");
+        error("Server did not send a Connection header!");
         free(rrrs.headerslist); return NEGFAILURE;
     }
 
     if (getheaderfromlist("Upgrade", rrrs.headerslist_len, rrrs.headerslist) == NULL) {
-        ERROR("Server did not send a Upgrade header!");
+        error("Server did not send a Upgrade header!");
         free(rrrs.headerslist); return NEGFAILURE;
     }
 
-    DEBUG("Server successfully sent a good response!");
+    debug("Server successfully sent a good response!");
 
     free(rrrs.headerslist);
     return fd;
@@ -141,15 +141,15 @@ int websocket_send(int fd, void* buffer, uint64_t size, enum opcodes opcode, boo
 
     if (size <= 125) { // size fits in 7 bits
         byte1 = byte1 | (uint8_t)size;
-        TRACE("size is smaller then 125");
+        trace("size is smaller then 125");
     } else if (size >= 125 && size < UINT16_MAX) { // size fits in 16 bits
         byte1 = byte1 | 126;
         extra_payload_size_length = sizeof(uint16_t);
-        TRACE("size is smaller then UINT16_MAX");
+        trace("size is smaller then UINT16_MAX");
     } else if (size >= 125 && size > UINT16_MAX && size < UINT64_MAX) { // size fits in 64 bits
         byte1 = byte1 | 127;
         extra_payload_size_length = sizeof(uint64_t);
-        TRACE("size is smaller then UINT64_MAX");
+        trace("size is smaller then UINT64_MAX");
     }
 
     uint8_t maskingkey[4];
@@ -159,26 +159,26 @@ int websocket_send(int fd, void* buffer, uint64_t size, enum opcodes opcode, boo
 
     error = BCryptOpenAlgorithmProvider(&handle, BCRYPT_RNG_ALGORITHM,NULL,0);
     if (!BCRYPT_SUCCESS(error)) {
-        TRACE("BCryptOpenAlgorithmProvider(): %lX.", error);
+        trace("BCryptOpenAlgorithmProvider(): %lX.", error);
         return FAILURE;
     }
     
     error = BCryptGenRandom(handle, (unsigned char*)maskingkey, sizeof(maskingkey), 0);
     if (!BCRYPT_SUCCESS(error)) {
-        TRACE("BCryptGenRandom(): %lX.", error);
+        trace("BCryptGenRandom(): %lX.", error);
         return FAILURE;
     }
     
     error = BCryptCloseAlgorithmProvider(handle,0);
     if (!BCRYPT_SUCCESS(error)) {
-        TRACE("BCryptCloseAlgorithmProvider(): %lX.", error);
+        trace("BCryptCloseAlgorithmProvider(): %lX.", error);
         return FAILURE;
     }
 #else
     getrandom(&maskingkey, sizeof(maskingkey), 0);
 #endif
 
-#if LOGGER_COMPILE_OUT 
+#if LOGGER_COMPILE_OUT != 1 
     if(getalt()->trace) {
         fprintf(stderr, MAG "[trace] " RESET "masking key: ");
         for (int i = 0; i < sizeof(maskingkey); i++)
@@ -213,11 +213,11 @@ int websocket_send(int fd, void* buffer, uint64_t size, enum opcodes opcode, boo
     memcpy(payload + 2 + extra_payload_size_length, maskingkey, sizeof(maskingkey));
 
     if (buffer == NULL && size == 0) {
-        TRACE("no payload provided.");
+        trace("no payload provided.");
     } else {
         memcpy(payload + header_size, buffer, size);
 
-#if LOGGER_COMPILE_OUT 
+#if LOGGER_COMPILE_OUT != 1 
         if(getalt()->trace) {
             fprintf(stderr, MAG "[trace] " RESET "payload: ");
             for (int i = 0; i < size; i++) {
@@ -227,7 +227,7 @@ int websocket_send(int fd, void* buffer, uint64_t size, enum opcodes opcode, boo
         }
 #endif
         
-        TRACE("payload (size): %zu", payload_size);
+        trace("payload (size): %zu", payload_size);
 
         for (int i = 0; i < size; i++) {
             /* 
@@ -244,7 +244,7 @@ int websocket_send(int fd, void* buffer, uint64_t size, enum opcodes opcode, boo
             payload[header_size + i] = payload[header_size + i] ^ maskingkey[i % 4];
         }
 
-#if LOGGER_COMPILE_OUT 
+#if LOGGER_COMPILE_OUT != 1 
         if(getalt()->trace) {
             fprintf(stderr, MAG "[trace] " RESET "payload (masked): ");
             for (int i = 0; i < size; i++) {
@@ -256,7 +256,7 @@ int websocket_send(int fd, void* buffer, uint64_t size, enum opcodes opcode, boo
     }
 
     if (send(fd, payload, payload_size, 0) < 0) {
-        ERROR("send(): %s.", strerror(errno));
+        error("send(): %s.", strerror(errno));
         free(payload);
         return FAILURE;
     }
@@ -276,25 +276,25 @@ struct message websocket_recv(int fd) {
     while (FIN != true) {
         uint8_t header[2];
         if (recv(fd, header, sizeof(header), MSG_WAITALL) <= 0) { // todo: make a test to figure out what recv returns (on linux it's ssize_t, on windows it's int. 4 bytes longer...)
-            ERROR("recv(): %s.", strerror(errno));
+            error("recv(): %s.", strerror(errno));
             msg.error = EXIT_FAILURE; return msg;
         }
 
         FIN = (header[0] & 0b10000000) != 0;
-        TRACE("FIN: %s", FIN ? "True" : "False");
+        trace("FIN: %s", FIN ? "True" : "False");
 
         if ((header[0] & 0b01110000) != 0) {
-            ERROR("RSV[1..3] has a non 0 value! Connection must be considered a FAIL!");
+            error("RSV[1..3] has a non 0 value! Connection must be considered a FAIL!");
             msg.error = FAILURE; return msg;
         }
 
         enum opcodes opcode = header[0] & 0b00001111;
-        TRACE("opcode: %i", opcode);
+        trace("opcode: %i", opcode);
 
         bool masked = (header[1] & 0b10000000) != 0;
-        TRACE("masked: %i", masked);
+        trace("masked: %i", masked);
         if (masked == true) {
-            ERROR("Masked bit has a non 0 value! Connection must be considered a FAIL!\n");
+            error("Masked bit has a non 0 value! Connection must be considered a FAIL!\n");
             msg.error = FAILURE; return msg;
         }
 
@@ -302,14 +302,14 @@ struct message websocket_recv(int fd) {
 
         if (payload_size == 126) {
             if (recv(fd, (char*)&payload_size, sizeof(uint16_t), 0) <= 0) {
-                ERROR("recv(): %s.", strerror(errno));
+                error("recv(): %s.", strerror(errno));
                 msg.error = FAILURE; return msg;
             }
             payload_size = htons(payload_size);
         }
         else if (payload_size == 127) {
             if (recv(fd, (char*)&payload_size, sizeof(uint64_t), 0) <= 0) {
-                ERROR("recv(): %s.", strerror(errno));
+                error("recv(): %s.", strerror(errno));
                 msg.error = FAILURE; return msg;
             }
 #if defined(_WIN32)
@@ -319,23 +319,23 @@ struct message websocket_recv(int fd) {
 #endif
         }
 
-        TRACE("payload size: %zu, current buffer size: %zu", payload_size, ((struct message_data*)msg.msgdata)->size);
+        trace("payload size: %zu, current buffer size: %zu", payload_size, ((struct message_data*)msg.msgdata)->size);
 
         if (payload_size > 0) {
             if (((struct message_data*)msg.msgdata)->buffer == NULL) {
                 ((struct message_data*)msg.msgdata)->buffer = malloc(payload_size);
             } else {
-                TRACE("resizing buffer... %zu -> %zu", ((struct message_data*)msg.msgdata)->size, ((struct message_data*)msg.msgdata)->size + payload_size);
+                trace("resizing buffer... %zu -> %zu", ((struct message_data*)msg.msgdata)->size, ((struct message_data*)msg.msgdata)->size + payload_size);
                 resizebuffer(((struct message_data*)msg.msgdata)->buffer, ((struct message_data*)msg.msgdata)->size + payload_size);
             }
             
             if (recv(fd, (uint8_t*)(((struct message_data*)msg.msgdata)->buffer) + ((struct message_data*)msg.msgdata)->size, payload_size, MSG_WAITALL) <= 0) {
-                TRACE("recv(): %s.", strerror(errno));
+                trace("recv(): %s.", strerror(errno));
                 free(((struct message_data*)msg.msgdata)->buffer);
                 msg.error = FAILURE; return msg;
             }
 
-#if LOGGER_COMPILE_OUT 
+#if LOGGER_COMPILE_OUT != 1 
             if(getalt()->trace) {
                 fprintf(stderr, MAG "[trace] " RESET "payload: ");
                 for (int i = 0; i < payload_size; i++) {
@@ -354,7 +354,7 @@ struct message websocket_recv(int fd) {
     // add the end string char.
     if (((struct message_data*)msg.msgdata)->opcode == TEXT) {
         resizebuffer(((struct message_data*)msg.msgdata)->buffer, ((struct message_data*)msg.msgdata)->size + 1);
-        TRACE("resizing buffer... %zu -> %zu", ((struct message_data*)msg.msgdata)->size, ((struct message_data*)msg.msgdata)->size + 1);
+        trace("resizing buffer... %zu -> %zu", ((struct message_data*)msg.msgdata)->size, ((struct message_data*)msg.msgdata)->size + 1);
 
         char endchar = '\0';
         memcpy((uint8_t*)(((struct message_data*)msg.msgdata)->buffer) + ((struct message_data*)msg.msgdata)->size, &endchar, 1);

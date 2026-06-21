@@ -39,7 +39,7 @@
 volatile sig_atomic_t status = 0;
 
 static void catch_function(int signo) {
-    WARN("Recive interrupt. Now exiting, bye bye!");
+    warn("Recive interrupt. Now exiting, bye bye!");
     status = signo;
 }
 
@@ -92,13 +92,13 @@ enum thread_error inbound(int in_socket_fd, int out_websocket_fd) {
     int bytesrecv = recv(in_socket_fd, buffer, sizeof(buffer), 0);
 
     if (bytesrecv < 0) {
-        ERROR("recv(): %s.", strerror(errno));
+        error("recv(): %s.", strerror(errno));
         return READ_ERROR;
     } else if (bytesrecv == 0) {
-        WARN("inbound disconnected.");
+        warn("inbound disconnected.");
 
         if (websocket_send(out_websocket_fd, NULL, 0, CLOSE, true)) {
-            ERROR("websocket_send() failed to send!");
+            error("websocket_send() failed to send!");
             return WRITE_ERROR;
         }
 
@@ -106,7 +106,7 @@ enum thread_error inbound(int in_socket_fd, int out_websocket_fd) {
     }
     
     if (websocket_send(out_websocket_fd, buffer, bytesrecv, BINARY, true)) {
-        ERROR("websocket_send() failed to send!");
+        error("websocket_send() failed to send!");
         return WRITE_ERROR;
     }
 
@@ -119,7 +119,7 @@ enum thread_error outbound(int in_socket_fd, int out_websocket_fd) {
         assert(((struct message_data*)msg.msgdata)->opcode != CONTINUATION); // should've already been handled.
         
         if (((struct message_data*)msg.msgdata)->opcode == CLOSE) {
-            DEBUG("Websocket closed");
+            debug("Websocket closed");
             
             if (((struct message_data*)msg.msgdata)->size > 0) {
                 uint16_t statuscode = 0;
@@ -129,22 +129,22 @@ enum thread_error outbound(int in_socket_fd, int out_websocket_fd) {
 #else
                 statuscode = be16toh(statuscode);
 #endif
-                DEBUG("status code: %i", statuscode);
+                debug("status code: %i", statuscode);
                 
                 size_t sizeofreason = ((struct message_data*)msg.msgdata)->size - sizeof(statuscode) + 1;
                 char* reason = malloc(sizeofreason);
                 memcpy(reason, (uint8_t*)(((struct message_data*)msg.msgdata)->buffer) + sizeof(statuscode), ((struct message_data*)msg.msgdata)->size - sizeof(statuscode));
                 reason[sizeofreason - 1] = '\0';
-                DEBUG("reason: %s", reason);
+                debug("reason: %s", reason);
                 free(reason);
             } else if (((struct message_data*)msg.msgdata)->size > 123) {
-                ERROR("CloseFrame size too big! Not reading...");
+                error("CloseFrame size too big! Not reading...");
             } else {
-                WARN("No close frame provided.");
+                warn("No close frame provided.");
             }
 
             if (websocket_send(out_websocket_fd, NULL, 0, CLOSE, true)) {
-                ERROR("websocket_send() failed to send!");
+                error("websocket_send() failed to send!");
                 free(((struct message_data*)msg.msgdata)->buffer);
                 return WRITE_ERROR;
             }
@@ -152,10 +152,10 @@ enum thread_error outbound(int in_socket_fd, int out_websocket_fd) {
             free(((struct message_data*)msg.msgdata)->buffer);
             return OUTBOUND_DISCONNECTED_SAFELY;
         } else if (((struct message_data*)msg.msgdata)->opcode == TEXT) {
-            WARN("Unsupported opcode.");
+            warn("Unsupported opcode.");
         } else if (((struct message_data*)msg.msgdata)->opcode == PING) {
             if (websocket_send(out_websocket_fd, NULL, 0, PONG, true)) {
-                ERROR("websocket_send() failed to send!");
+                error("websocket_send() failed to send!");
                 free(((struct message_data*)msg.msgdata)->buffer);
                 return WRITE_ERROR;
             }
@@ -163,7 +163,7 @@ enum thread_error outbound(int in_socket_fd, int out_websocket_fd) {
             // ...
         } else if (((struct message_data*)msg.msgdata)->opcode == BINARY) {
             if (send(in_socket_fd, ((struct message_data*)msg.msgdata)->buffer, ((struct message_data*)msg.msgdata)->size, 0) < 0) {
-                ERROR("send(): %s.", strerror(errno));
+                error("send(): %s.", strerror(errno));
                 free(((struct message_data*)msg.msgdata)->buffer);
                 return WRITE_ERROR;
             }
@@ -171,7 +171,7 @@ enum thread_error outbound(int in_socket_fd, int out_websocket_fd) {
 
         free(((struct message_data*)msg.msgdata)->buffer);
     } else {
-        ERROR("websocket_recv() failed to receive!");
+        error("websocket_recv() failed to receive!");
         if (((struct message_data*)msg.msgdata)->buffer != NULL) // unknown state but lets make sure
             free(((struct message_data*)msg.msgdata)->buffer);
         return READ_ERROR;
@@ -190,7 +190,7 @@ void* route(void* ptrrd)
     struct routedata rd;
     memcpy(&rd, ptrrd, sizeof(struct routedata));
     
-    DEBUG("Route thread started!");
+    debug("Route thread started!");
     enum thread_error error = 0;
     int timeout = 1000 * 5;
 
@@ -198,7 +198,7 @@ void* route(void* ptrrd)
     // create a epoll file discriptor
     int epollfd = epoll_create1(0);
     if (epollfd < 0) {
-        ERROR("epoll_create1(): %s.", strerror(errno));
+        error("epoll_create1(): %s.", strerror(errno));
         error = POLL_ERROR;
     }
 
@@ -207,7 +207,7 @@ void* route(void* ptrrd)
     epolleventlocalsocket.data.u32 = ROUTE_CLIENT_CONNECTION;
     epolleventlocalsocket.events = EPOLLIN;
     if (epoll_ctl(epollfd, EPOLL_CTL_ADD, rd.in_socket_fd, &epolleventlocalsocket) < 0) {
-        ERROR("epoll_ctl(): %s.", strerror(errno));
+        error("epoll_ctl(): %s.", strerror(errno));
         error = POLL_ERROR;
     }
 
@@ -215,18 +215,18 @@ void* route(void* ptrrd)
     epolleventwebsocket.data.u32 = ROUTE_SERVER_WEBSOCKET_CONNECTION;
     epolleventwebsocket.events = EPOLLIN;
     if (epoll_ctl(epollfd, EPOLL_CTL_ADD, rd.out_websocket_fd, &epolleventwebsocket) < 0) {
-        ERROR("epoll_ctl(): %s.", strerror(errno));
+        error("epoll_ctl(): %s.", strerror(errno));
         error = POLL_ERROR;
     }
 
     while (status != SIGINT && error == 0) {
         struct epoll_event epe[2];
         
-        // DEBUG("waiting for packets...");
+        // debug("waiting for packets...");
         int fdevents = epoll_wait(epollfd, epe, sizeof(epe) / sizeof(struct epoll_event), timeout);
 
         if (fdevents < 0)  {
-            ERROR("epoll_wait(): %s.", strerror(errno));
+            error("epoll_wait(): %s.", strerror(errno));
             error = POLL_ERROR;
         } else if (fdevents == 0) {
             // not ready
@@ -256,7 +256,7 @@ void* route(void* ptrrd)
     fds[1].fd = rd.out_websocket_fd;
 
     while (status != SIGINT && error == 0) {
-        // DEBUG("waiting for packets...");
+        // debug("waiting for packets...");
         int pollret = 
 #if HAVE_WSAPOLL
         WSAPoll
@@ -266,7 +266,7 @@ void* route(void* ptrrd)
         (fds, sizeof(fds) / sizeof(struct pollfd), timeout);
 
         if (pollret < 0) {
-            ERROR( 
+            error( 
 #if HAVE_WSAPOLL
                 "WSAPoll(): %s."
 #elif HAVE_POLL_H
@@ -296,14 +296,14 @@ void* route(void* ptrrd)
     }
 #endif
 
-    DEBUG("Route thread exiting...");
+    debug("Route thread exiting...");
     // TODO: this would be more nicer if these were macros.
     if (close(rd.in_socket_fd) < 0 && close(rd.out_websocket_fd) < 0  
 #if HAVE_SYS_EPOLL_H
         && close(epollfd) < 0
 #endif
     ) {
-        ERROR("close(): %s.", strerror(errno));
+        error("close(): %s.", strerror(errno));
         error = CLOSE_ERROR;
     }
      
@@ -317,7 +317,7 @@ void* route(void* ptrrd)
 }
 
 int main(int argc, char *argv[]) {
-#if LOGGER_COMPILE_OUT 
+#if LOGGER_COMPILE_OUT != 1 
     setuplogger();
 #endif
 
@@ -351,7 +351,7 @@ int main(int argc, char *argv[]) {
 
     struct parsed_url purl = parse_url(argaddress.value);
     if (purl.protocol == unknown) {
-        ERROR("Unknown protocol.");
+        error("Unknown protocol.");
         cleanup_args(&argport);
         free((void*)purl.address);
         free((void*)purl.path);
@@ -362,7 +362,7 @@ int main(int argc, char *argv[]) {
     if (argport.value == NULL) {
         port = 48375;
     } else if (*(int*)argport.value > UINT16_MAX) {
-        ERROR("invalid port.");
+        error("invalid port.");
         cleanup_args(&argport);
         free((void*)purl.address);
         free((void*)purl.path);
@@ -373,7 +373,7 @@ int main(int argc, char *argv[]) {
 
     cleanup_args(&argport);
     
-    INFO("Starting local connection...");
+    info("Starting local connection...");
 
 #if defined(_WIN32)
     // todo: windows specific version
@@ -384,17 +384,17 @@ int main(int argc, char *argv[]) {
     // begin loading Ws2_32.dll
     err = WSAStartup(MAKEWORD(2, 2), &wsaData);
     if (err != 0) {
-        ERROR("WSAStartup failed with error: %d", err);
+        error("WSAStartup failed with error: %d", err);
         return EXIT_FAILURE;
     }
     
     //verify that we have the correct version
     if (LOBYTE(wsaData.wVersion) != 2 || HIBYTE(wsaData.wVersion) != 2) {
-        ERROR(stderr, "Could not find a usable version of Winsock.dll...");
+        error("Could not find a usable version of Winsock.dll...");
         WSACleanup();
         return 1;
     } else {
-        DEBUG("Valid Winsock dll (v2.2) was found!");
+        debug("Valid Winsock dll (v2.2) was found!");
     }
 #else
     struct sigaction a;
@@ -402,7 +402,7 @@ int main(int argc, char *argv[]) {
     a.sa_flags = 0;
     sigemptyset( &a.sa_mask );
     if (sigaction( SIGINT, &a, NULL ) < 0) {
-        ERROR("An error occurred while setting up a signal handler! %s.", strerror(errno));
+        error("An error occurred while setting up a signal handler! %s.", strerror(errno));
         free((void*)purl.address);
         free((void*)purl.path);
         return EXIT_FAILURE;
@@ -411,14 +411,14 @@ int main(int argc, char *argv[]) {
 
     int socket = socket_bind(INADDR_ANY, port);
     if (socket < 0) {
-        ERROR("socket failed to bind! exiting...");
+        error("socket failed to bind! exiting...");
         free((void*)purl.address);
         free((void*)purl.path);
         return EXIT_FAILURE;
     }
 
     if (listen(socket, 0) < 0) {
-        ERROR("listen(): %s.", strerror(errno));
+        error("listen(): %s.", strerror(errno));
         free((void*)purl.address);
         free((void*)purl.path);
         return EXIT_FAILURE;
@@ -434,16 +434,16 @@ int main(int argc, char *argv[]) {
         threadroutes[threadroutes_total - 1]->out_url = &purl;
         threadroutes[threadroutes_total - 1]->in_socket_fd = accept(socket, NULL, NULL);
         if (threadroutes[threadroutes_total - 1]->in_socket_fd < 0) {
-            ERROR("failed to accept a new connection. %s.", strerror(errno));
+            error("failed to accept a new connection. %s.", strerror(errno));
             free(threadroutes[threadroutes_total - 1]);
             continue;
         }
 
         // start a new websocket connection
-        INFO("Starting websocket connection...");
+        info("Starting websocket connection...");
         threadroutes[threadroutes_total - 1]->out_websocket_fd = websocket_connect(purl);
         if (threadroutes[threadroutes_total - 1]->out_websocket_fd < 0) {
-            ERROR("failed to accept a new websocket connection.");
+            error("failed to accept a new websocket connection.");
             close(threadroutes[threadroutes_total - 1]->in_socket_fd);
             free(threadroutes[threadroutes_total - 1]);
             continue;
@@ -475,7 +475,7 @@ int main(int argc, char *argv[]) {
         pthread_join(threadroutes[i]->thread, (void*)&return_val);
 #endif
         free(threadroutes[i]);
-        DEBUG("Thread[%i] exited with exitcode %i", i, *return_val);
+        debug("Thread[%i] exited with exitcode %i", i, *return_val);
         free(return_val);
     }
 
@@ -484,7 +484,7 @@ int main(int argc, char *argv[]) {
     free((void*)purl.path);
     
     if (close(socket) < 0) {
-        ERROR("close(): %s.", strerror(errno));
+        error("close(): %s.", strerror(errno));
         return_error = EXIT_FAILURE;
     }
 

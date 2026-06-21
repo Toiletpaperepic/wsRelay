@@ -1,5 +1,7 @@
 #if defined(_WIN32)
+#include <winsock2.h>
 #include <windows.h>
+#include <io.h>
 #else 
 #if defined(__ANDROID__) && __ANDROID_API__ < 28
 #include <sys/syscall.h>
@@ -55,7 +57,7 @@ void make_user_agent(char** destinationstring) {
     char hostname[HOST_NAME_MAX];
 #endif
     if (gethostname(hostname, sizeof(hostname)) < 0) {
-        ERROR("gethostname(): %s.", strerror(errno));
+        error("gethostname(): %s.", strerror(errno));
     } else {
         appendchar(destinationstring, "Hostname/");
         appendchar(destinationstring, hostname);
@@ -99,19 +101,19 @@ const char* make_http_header(struct parsed_url purl) {
 
     error = BCryptOpenAlgorithmProvider(&handle, BCRYPT_RNG_ALGORITHM,NULL,0);
     if (!BCRYPT_SUCCESS(error)) {
-        ERRRO("BCryptOpenAlgorithmProvider(): %lX.", error);
+        error("BCryptOpenAlgorithmProvider(): %lX.", error);
         exit(EXIT_FAILURE);
     }
     
     error = BCryptGenRandom(handle, (PUCHAR)nonce, sizeof(nonce), 0);
     if (!BCRYPT_SUCCESS(error)) {
-        ERROR(stderr, "BCryptGenRandom(): %lX.", error);
+        error("BCryptGenRandom(): %lX.", error);
         exit(EXIT_FAILURE);
     }
     
     error = BCryptCloseAlgorithmProvider(handle,0);
     if (!BCRYPT_SUCCESS(error)) {
-        ERROR("BCryptCloseAlgorithmProvider(): %lX.", error);
+        error("BCryptCloseAlgorithmProvider(): %lX.", error);
         exit(EXIT_FAILURE);
     }
 #else
@@ -153,7 +155,7 @@ struct http_response_read_result read_http_response_header(int fd) {
         unsigned int cursor = 4;
 
         if (recv(fd, ((struct http_response_read_result_successful*)rrr.data)->buffer, cursor, MSG_WAITALL) < 0) {
-            ERROR("recv(): %s.", strerror(errno));
+            error("recv(): %s.", strerror(errno));
             close(fd);
             rrr.error = FAILURE; return rrr;
         }
@@ -161,12 +163,12 @@ struct http_response_read_result read_http_response_header(int fd) {
         // recvive until we reach \r\n\r\n
         for (; !(((struct http_response_read_result_successful*)rrr.data)->buffer[cursor - 4] == '\r' && ((struct http_response_read_result_successful*)rrr.data)->buffer[cursor - 3] == '\n' && ((struct http_response_read_result_successful*)rrr.data)->buffer[cursor - 2] == '\r' && ((struct http_response_read_result_successful*)rrr.data)->buffer[cursor - 1] == '\n'); cursor++) {
             if (cursor > sizeof(((struct http_response_read_result_successful*)rrr.data)->buffer)) {
-                ERROR("Respose buffer is full! Considering read as a FAILURE!");
+                error("Respose buffer is full! Considering read as a FAILURE!");
                 rrr.error = FAILURE; return rrr;
             }
     
             if (recv(fd, ((struct http_response_read_result_successful*)rrr.data)->buffer + cursor, 1, MSG_WAITALL) < 0) {
-                ERROR("recv(): %s.", strerror(errno));
+                error("recv(): %s.", strerror(errno));
                 close(fd);
                 rrr.error = FAILURE; return rrr;
             }
@@ -175,7 +177,7 @@ struct http_response_read_result read_http_response_header(int fd) {
         ((struct http_response_read_result_successful*)rrr.data)->buffer[cursor] = '\0';
         unsigned int response_size = cursor - 4;
     
-        DEBUG("received accept message with size of %i, %s\n", response_size - 1, ((struct http_response_read_result_successful*)rrr.data)->buffer);
+        debug("received accept message with size of %i, %s\n", response_size - 1, ((struct http_response_read_result_successful*)rrr.data)->buffer);
     }
 
     ((struct http_response_read_result_successful*)rrr.data)->headerslist_len = 1;
@@ -208,17 +210,17 @@ struct http_response_read_result read_http_response_header(int fd) {
         
         char* strhttpcode = firstheadercursor;
         
-        DEBUG("HTTP version: %s", ((struct http_response_read_result_successful*)rrr.data)->httpversion);
+        debug("HTTP version: %s", ((struct http_response_read_result_successful*)rrr.data)->httpversion);
 
         strgotocharuntil(&firstheadercursor, ' ');
         *firstheadercursor = '\0'; firstheadercursor++;
 
         if (strtouint16(&((struct http_response_read_result_successful*)rrr.data)->httpcode, strhttpcode)) {
-            ERROR("strtouint16() Failed: invalid parameter.");
+            error("strtouint16() Failed: invalid parameter.");
             free(headerslist); rrr.error = FAILURE; return rrr;
         }
 
-        DEBUG("HTTP code: %hu", ((struct http_response_read_result_successful*)rrr.data)->httpcode);
+        debug("HTTP code: %hu", ((struct http_response_read_result_successful*)rrr.data)->httpcode);
     }
 
     ((struct http_response_read_result_successful*)rrr.data)->headerslist = malloc(((struct http_response_read_result_successful*)rrr.data)->headerslist_len * sizeof(* ((struct http_response_read_result_successful*)rrr.data)->headerslist));
@@ -239,8 +241,8 @@ struct http_response_read_result read_http_response_header(int fd) {
             ((struct http_response_read_result_successful*)rrr.data)->headerslist[i].header_name = header_start;
             ((struct http_response_read_result_successful*)rrr.data)->headerslist[i].header_content = header;
 
-            DEBUG("header name: %s", ((struct http_response_read_result_successful*)rrr.data)->headerslist[i].header_name);
-            DEBUG("header content: %s", ((struct http_response_read_result_successful*)rrr.data)->headerslist[i].header_content);
+            debug("header name: %s", ((struct http_response_read_result_successful*)rrr.data)->headerslist[i].header_name);
+            debug("header content: %s", ((struct http_response_read_result_successful*)rrr.data)->headerslist[i].header_content);
         }
     }
 

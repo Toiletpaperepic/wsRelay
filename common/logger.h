@@ -1,11 +1,12 @@
 #if !defined(LOGGER_COMPILE_OUT)
-#define LOGGER_COMPILE_OUT 1
+#define LOGGER_COMPILE_OUT 0
 #endif
 
-#include <stdbool.h>
 #include <stdio.h>
 
-#if LOGGER_COMPILE_OUT 
+#if LOGGER_COMPILE_OUT != 1
+#include <stdbool.h>
+
 struct allowed_log_types {
     bool error;
     bool warn;
@@ -29,18 +30,18 @@ struct allowed_log_types* getalt();
 #define print(format, ...) printf(format "\n", ##__VA_ARGS__);
 #define stderrprint(format, ...) fprintf(stderr, format "\n", ##__VA_ARGS__);
 
-#define ERROR(format, ...) if(getalt()->error) {stderrprint(RED "[error] " RESET format, ##__VA_ARGS__)}
-#define WARN(format, ...) if(getalt()->warn) {stderrprint(YEL "[warn] " RESET format, ##__VA_ARGS__)}
-#define INFO(format, ...) if(getalt()->info) {stderrprint(BLU "[info] " RESET format, ##__VA_ARGS__)}
-#define DEBUG(format, ...) if(getalt()->debug) {stderrprint(CYN "[debug] " RESET format, ##__VA_ARGS__)}
-#define TRACE(format, ...) if(getalt()->trace) {stderrprint(MAG "[trace] " RESET format, ##__VA_ARGS__)}
+#define error(format, ...) if(getalt()->error) {stderrprint(RED "[error] " RESET format, ##__VA_ARGS__)}
+#define warn(format, ...) if(getalt()->warn) {stderrprint(YEL "[warn] " RESET format, ##__VA_ARGS__)}
+#define info(format, ...) if(getalt()->info) {stderrprint(BLU "[info] " RESET format, ##__VA_ARGS__)}
+#define debug(format, ...) if(getalt()->debug) {stderrprint(CYN "[debug] " RESET format, ##__VA_ARGS__)}
+#define trace(format, ...) if(getalt()->trace) {stderrprint(MAG "[trace] " RESET format, ##__VA_ARGS__)}
 #else
 #define print(format, ...) printf(format "\n", ##__VA_ARGS__);
 #define stderrprint(format, ...) fprintf(stderr, format "\n", ##__VA_ARGS__);
 
-#define ERROR(format, ...) stderrprint(format, ##__VA_ARGS__)
-#define WARN(format, ...) stderrprint(format, ##__VA_ARGS__)
-#define INFO(format, ...) stderrprint(format, ##__VA_ARGS__)
-#define DEBUG(format, ...) 
-#define TRACE(format, ...) 
+#define error(format, ...) stderrprint(format, ##__VA_ARGS__)
+#define warn(format, ...) stderrprint(format, ##__VA_ARGS__)
+#define info(format, ...) stderrprint(format, ##__VA_ARGS__)
+#define debug(format, ...) 
+#define trace(format, ...) 
 #endif

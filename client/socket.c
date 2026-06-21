@@ -9,18 +9,18 @@
 int socket_bind(uint32_t addr, uint16_t port) {
     int fd = socket(AF_INET, SOCK_STREAM, 0);
     if (fd < 0) {
-        ERROR("socket(): %s.", strerror(errno));
+        error("socket(): %s.", strerror(errno));
         return -1;
     }
     
 #if !defined(_WIN32) 
     int option = 1;
     if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &option, sizeof(int)) < 0) {
-        ERROR("setsockopt(): %s.", strerror(errno));
+        error("setsockopt(): %s.", strerror(errno));
         return -1;
     }
     if (setsockopt(fd, SOL_SOCKET, SO_REUSEPORT, &option, sizeof(int)) < 0) {
-        ERROR("setsockopt(): %s.", strerror(errno));
+        error("setsockopt(): %s.", strerror(errno));
         return -1;
     }
 #endif
@@ -31,7 +31,7 @@ int socket_bind(uint32_t addr, uint16_t port) {
     address.sin_addr.s_addr = addr;
 
     if (bind(fd, (struct sockaddr*)&address, sizeof(address)) < 0) {
-        ERROR("bind(): %s.", strerror(errno));
+        error("bind(): %s.", strerror(errno));
         return -1;
     }
     

@@ -10,7 +10,7 @@
 #define resizebuffer(old_buffer, newsize, custom_error, with_free)                            \
     void* new_buffer = realloc(old_buffer, newsize);                                          \
     if (new_buffer == NULL) {                                                                 \
-        ERROR("realloc(): Unknown reason.");                                                  \
+        error("realloc(): Unknown reason.");                                                  \
         if (with_free) {                                                                      \
             free(old_buffer);                                                                 \
         }                                                                                     \

@@ -19,7 +19,7 @@ struct http_response_read_result {
     uint8_t data[sizeof(struct http_response_read_result_successful)];
 };
 
+struct http_header* getheaderfromlist(const char* name, unsigned int headerslist_len, struct http_header* headerslist);
+DLL_EXPORT struct http_response_read_result read_http_response_header(int fd);
 DLL_EXPORT void make_user_agent(char** destinationstring);
 const char* make_http_header(struct parsed_url purl);
-struct http_response_read_result read_http_response_header(int fd);
-struct http_header* getheaderfromlist(const char* name, unsigned int headerslist_len, struct http_header* headerslist);

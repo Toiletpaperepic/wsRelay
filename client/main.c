@@ -1,5 +1,10 @@
-#if HAVE_WSAPOLL
-// included later down
+#define RESIZEBUFFER_CUSTOM_ERROR 1
+#include "common.h"
+#include PLATFORM_NETWORK_HEADER
+
+#if HAVE_WINSOCK2_H
+// already included.
+//#include <winsock2.h>
 #elif HAVE_SYS_EPOLL_H
 #include <sys/epoll.h>
 #elif HAVE_POLL_H
@@ -7,21 +12,22 @@
 #else
 #error No implementation found for poll()!
 #endif
+
 #if HAVE_CREATETHREAD
-// already included in windows.h... somewhere?
+// already included in windows.h.
 #elif HAVE_PTHREAD_H
 #include <pthread.h>
 #else
 #error No implementation found for multithreading!
 #endif
+
 #if defined(_WIN32)
-#include <winsock2.h>
 #include <windows.h>
-#include <io.h>
 #else
-#include <sys/socket.h>
+#include <netinet/in.h>
 #include <unistd.h>
 #endif
+
 #include <stdbool.h>
 #include <string.h>
 #include <stdlib.h>
@@ -30,10 +36,8 @@
 #include <signal.h>
 #include <stddef.h>
 #include <errno.h>
-#define RESIZEBUFFER_CUSTOM_ERROR 1
 #include "wsrelay.h"
 #include "socket.h"
-#include "common.h"
 #include "args.h"
 
 volatile sig_atomic_t status = 0;
@@ -53,7 +57,7 @@ void version() {
 }
 
 void help(const char* programname, struct Argument* firstarglist, struct Argument* secondarglist) {
-    print("Usage: %s --out-url <url> [options]", programname);
+    print("Usage: %s --address <url> [options]", programname);
     print_description(firstarglist);
     print_description(secondarglist);
 }
@@ -76,9 +80,8 @@ enum thread_error {
 };
 
 struct routedata {
-    struct parsed_url* out_url;
-    int in_socket_fd;
-    int out_websocket_fd;
+    PLATFORM_REP_SOCKET in_socket_fd;
+    PLATFORM_REP_SOCKET out_websocket_fd;
 #if HAVE_CREATETHREAD
     HANDLE ThreadHandle;
     DWORD ThreadId;
@@ -88,7 +91,7 @@ struct routedata {
 };
 
 enum thread_error inbound(int in_socket_fd, int out_websocket_fd) {
-    uint8_t buffer[1024] = {};
+    uint8_t buffer[1024];
     int bytesrecv = recv(in_socket_fd, buffer, sizeof(buffer), 0);
 
     if (bytesrecv < 0) {
@@ -247,7 +250,7 @@ void* route(void* ptrrd)
             }
         }
     }
-#elif HAVE_WSAPOLL || HAVE_POLL_H
+#elif HAVE_WINSOCK2_H || HAVE_POLL_H
     struct pollfd fds[2];
 
     fds[0].events = POLLIN;
@@ -258,7 +261,7 @@ void* route(void* ptrrd)
     while (status != SIGINT && error == 0) {
         // debug("waiting for packets...");
         int pollret = 
-#if HAVE_WSAPOLL
+#if HAVE_WINSOCK2_H
         WSAPoll
 #elif HAVE_POLL_H
         poll
@@ -266,13 +269,11 @@ void* route(void* ptrrd)
         (fds, sizeof(fds) / sizeof(struct pollfd), timeout);
 
         if (pollret < 0) {
-            error( 
-#if HAVE_WSAPOLL
-                "WSAPoll(): %s."
+#if HAVE_WINSOCK2_H
+            error("WSAPoll(): %s.", strerror(errno));
 #elif HAVE_POLL_H
-                "poll(): %s."
+            error("poll(): %s.", strerror(errno));
 #endif
-                , strerror(errno));
             error = POLL_ERROR;
         } else if (pollret == 0) {
             // not ready
@@ -298,7 +299,12 @@ void* route(void* ptrrd)
 
     debug("Route thread exiting...");
     // TODO: this would be more nicer if these were macros.
-    if (close(rd.in_socket_fd) < 0 && close(rd.out_websocket_fd) < 0  
+    if (
+#if HAVE_WINSOCK2_H
+        closesocket(rd.in_socket_fd) == SOCKET_ERROR && closesocket(rd.out_websocket_fd) == SOCKET_ERROR
+#elif HAVE_SYS_SOCKET_H
+        close(rd.in_socket_fd) < 0 && close(rd.out_websocket_fd) < 0  
+#endif
 #if HAVE_SYS_EPOLL_H
         && close(epollfd) < 0
 #endif
@@ -376,8 +382,6 @@ int main(int argc, char *argv[]) {
     info("Starting local connection...");
 
 #if defined(_WIN32)
-    // todo: windows specific version
-
     WSADATA wsaData;
     int err;
     
@@ -392,24 +396,27 @@ int main(int argc, char *argv[]) {
     if (LOBYTE(wsaData.wVersion) != 2 || HIBYTE(wsaData.wVersion) != 2) {
         error("Could not find a usable version of Winsock.dll...");
         WSACleanup();
-        return 1;
+        return EXIT_FAILURE;
     } else {
         debug("Valid Winsock dll (v2.2) was found!");
     }
+
+    if (signal(SIGINT, catch_function) == SIG_ERR) {
 #else
+    // todo: create a signal handler for windows
     struct sigaction a;
     a.sa_handler = catch_function;
     a.sa_flags = 0;
     sigemptyset( &a.sa_mask );
     if (sigaction( SIGINT, &a, NULL ) < 0) {
+#endif
         error("An error occurred while setting up a signal handler! %s.", strerror(errno));
         free((void*)purl.address);
         free((void*)purl.path);
         return EXIT_FAILURE;
     }
-#endif
 
-    int socket = socket_bind(INADDR_ANY, port);
+    PLATFORM_REP_SOCKET socket = socket_bind(INADDR_ANY, port);
     if (socket < 0) {
         error("socket failed to bind! exiting...");
         free((void*)purl.address);
@@ -431,10 +438,9 @@ int main(int argc, char *argv[]) {
     // keep constantly looking for a new connection. when we do, pass it along to a another thread to handle it.
     while (status != SIGINT) {
         threadroutes[threadroutes_total - 1] = malloc(sizeof(struct routedata));
-        threadroutes[threadroutes_total - 1]->out_url = &purl;
         threadroutes[threadroutes_total - 1]->in_socket_fd = accept(socket, NULL, NULL);
-        if (threadroutes[threadroutes_total - 1]->in_socket_fd < 0) {
-            error("failed to accept a new connection. %s.", strerror(errno));
+        if (threadroutes[threadroutes_total - 1]->in_socket_fd == PLATFORM_NETWORK_REP_INVALID_SOCKET) {
+            error("failed to accept a new connection. " PLATFORM_NETWORK_GET_ERROR_PRINT_TYPE, PLATFORM_NETWORK_GET_ERROR);
             free(threadroutes[threadroutes_total - 1]);
             continue;
         }
@@ -442,9 +448,13 @@ int main(int argc, char *argv[]) {
         // start a new websocket connection
         info("Starting websocket connection...");
         threadroutes[threadroutes_total - 1]->out_websocket_fd = websocket_connect(purl);
-        if (threadroutes[threadroutes_total - 1]->out_websocket_fd < 0) {
+        if (threadroutes[threadroutes_total - 1]->out_websocket_fd == NEGFAILURE) {
             error("failed to accept a new websocket connection.");
+#if HAVE_WINSOCK2_H
+            closesocket(threadroutes[threadroutes_total - 1]->in_socket_fd);
+#elif HAVE_SYS_SOCKET_H
             close(threadroutes[threadroutes_total - 1]->in_socket_fd);
+#endif;
             free(threadroutes[threadroutes_total - 1]);
             continue;
         }
@@ -482,9 +492,14 @@ int main(int argc, char *argv[]) {
     free(threadroutes);
     free((void*)purl.address);
     free((void*)purl.path);
-    
+
+#if HAVE_WINSOCK2_H
+    if (closesocket(socket) < SOCKET_ERROR) {
+        error("failed to close socket: %s.", WSAGetLastError());
+#elif HAVE_SYS_SOCKET_H
     if (close(socket) < 0) {
-        error("close(): %s.", strerror(errno));
+        error("failed to close socket: %s.", strerror(errno));
+#endif
         return_error = EXIT_FAILURE;
     }
 

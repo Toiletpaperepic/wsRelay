@@ -16,7 +16,9 @@ include(CheckIncludeFiles)
 include(CheckSymbolExists)
 
 set(INCLUDE_CHECK_LIST
+    sys/socket.h
     sys/epoll.h
+    winsock2.h
     poll.h
     pthread.h
     stdckdint.h 
@@ -32,9 +34,9 @@ foreach(INCLUDE IN LISTS INCLUDE_CHECK_LIST)
     endif()
 endforeach()
 
-set(SYMBOL_CHECK_LIST CreateThread WSAPoll)
-set(SYMBOL_HEADER_CHECK_LIST windows.h winsock2.h)
-set(SYMBOL_REQUIRED_LIBRARY_LIST NONE ws2_32)
+set(SYMBOL_CHECK_LIST CreateThread)
+set(SYMBOL_HEADER_CHECK_LIST windows.h)
+set(SYMBOL_REQUIRED_LIBRARY_LIST NONE)
 
 foreach(SYMBOL INCLUDE LIBRARY IN ZIP_LISTS SYMBOL_CHECK_LIST SYMBOL_HEADER_CHECK_LIST SYMBOL_REQUIRED_LIBRARY_LIST)
     # message(STATUS "${SYMBOL} ${INCLUDE}")
@@ -95,6 +97,7 @@ add_library(base64
 target_include_directories(base64 PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/utils/base64)
 
 add_library(common SHARED
+    common/dll_export.h    
     common/strtouint.c
     common/strtouint.h
     common/logger.c
@@ -118,7 +121,6 @@ endif()
 
 # --------websocket--------
 add_library(websocket SHARED
-    websocket/dll_export.h
     websocket/http.c
     websocket/http.h
     websocket/opcodes.h

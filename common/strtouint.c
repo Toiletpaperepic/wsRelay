@@ -1,5 +1,7 @@
 #include <stdbool.h>
 #include <stdint.h>
+#define STRING_TO_INT_CONVERSION 1
+#include "strtouint.h"
 #define CHECKED_ARITHMETIC 1
 #include "common.h"
 

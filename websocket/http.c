@@ -1,17 +1,20 @@
+#define RESIZEBUFFER_CUSTOM_ERROR 1
+#define STRING_TO_INT_CONVERSION 1
+#include "common.h"
+#include PLATFORM_NETWORK_HEADER
+
 #if defined(_WIN32)
-#include <winsock2.h>
 #include <windows.h>
-#include <io.h>
-#else 
+#else
 #if defined(__ANDROID__) && __ANDROID_API__ < 28
 #include <sys/syscall.h>
 #define getrandom(buf,buflen,flags) syscall(SYS_getrandom,buf,buflen,flags)
 #else
 #include <sys/random.h>
 #endif
-#include <sys/socket.h>
 #include <unistd.h>
 #endif
+
 #include <stdbool.h>
 #include <base64.h>
 #include <stdint.h>
@@ -21,9 +24,6 @@
 #include <limits.h>
 #include <errno.h>
 #include "wsrelay.h"
-#define RESIZEBUFFER_CUSTOM_ERROR 1
-#define STRING_TO_INT_CONVERSION 1
-#include "common.h"
 
 void appendchar(char** destinationstring, const char* sourcestring) { 
     resizebuffer(*destinationstring, strlen(*destinationstring) + strlen(sourcestring) + 1, , true); 
@@ -154,9 +154,13 @@ struct http_response_read_result read_http_response_header(int fd) {
     {
         unsigned int cursor = 4;
 
-        if (recv(fd, ((struct http_response_read_result_successful*)rrr.data)->buffer, cursor, MSG_WAITALL) < 0) {
+        if (recv(fd, ((struct http_response_read_result_successful*)rrr.data)->buffer, cursor, MSG_WAITALL) == PLATFORM_NETWORK_REP_SOCKET_ERROR) {
             error("recv(): %s.", strerror(errno));
+#if HAVE_WINSOCK2_H
+            closesocket(fd);
+#elif HAVE_SYS_SOCKET_H
             close(fd);
+#endif
             rrr.error = FAILURE; return rrr;
         }
         
@@ -167,9 +171,13 @@ struct http_response_read_result read_http_response_header(int fd) {
                 rrr.error = FAILURE; return rrr;
             }
     
-            if (recv(fd, ((struct http_response_read_result_successful*)rrr.data)->buffer + cursor, 1, MSG_WAITALL) < 0) {
+            if (recv(fd, ((struct http_response_read_result_successful*)rrr.data)->buffer + cursor, 1, MSG_WAITALL) == PLATFORM_NETWORK_REP_SOCKET_ERROR) {
                 error("recv(): %s.", strerror(errno));
+#if HAVE_WINSOCK2_H
+                closesocket(fd);
+#elif HAVE_SYS_SOCKET_H
                 close(fd);
+#endif
                 rrr.error = FAILURE; return rrr;
             }
         }
@@ -177,7 +185,7 @@ struct http_response_read_result read_http_response_header(int fd) {
         ((struct http_response_read_result_successful*)rrr.data)->buffer[cursor] = '\0';
         unsigned int response_size = cursor - 4;
     
-        debug("received accept message with size of %i, %s\n", response_size - 1, ((struct http_response_read_result_successful*)rrr.data)->buffer);
+        debug("Received accept message with size of %i, %s\n", response_size - 1, ((struct http_response_read_result_successful*)rrr.data)->buffer);
     }
 
     ((struct http_response_read_result_successful*)rrr.data)->headerslist_len = 1;
@@ -241,8 +249,8 @@ struct http_response_read_result read_http_response_header(int fd) {
             ((struct http_response_read_result_successful*)rrr.data)->headerslist[i].header_name = header_start;
             ((struct http_response_read_result_successful*)rrr.data)->headerslist[i].header_content = header;
 
-            debug("header name: %s", ((struct http_response_read_result_successful*)rrr.data)->headerslist[i].header_name);
-            debug("header content: %s", ((struct http_response_read_result_successful*)rrr.data)->headerslist[i].header_content);
+            trace("header name: %s", ((struct http_response_read_result_successful*)rrr.data)->headerslist[i].header_name);
+            trace("header content: %s", ((struct http_response_read_result_successful*)rrr.data)->headerslist[i].header_content);
         }
     }
 

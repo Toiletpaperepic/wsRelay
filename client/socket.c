@@ -1,13 +1,15 @@
 #if defined(_WIN32)
 #include <ws2tcpip.h>
+#else
+#include <netinet/in.h>
 #endif
 #include <string.h>
 #include <errno.h>
 #include "common.h"
 #include "socket.h"
 
-int socket_bind(uint32_t addr, uint16_t port) {
-    int fd = socket(AF_INET, SOCK_STREAM, 0);
+PLATFORM_REP_SOCKET socket_bind(uint32_t addr, uint16_t port) {
+    PLATFORM_REP_SOCKET fd = socket(AF_INET, SOCK_STREAM, 0);
     if (fd < 0) {
         error("socket(): %s.", strerror(errno));
         return -1;

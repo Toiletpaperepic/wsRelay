@@ -1,8 +1,9 @@
+#include "common.h"
+#include PLATFORM_NETWORK_HEADER
+
 #if defined(_WIN32)
-#include <winsock2.h>
 #include <windows.h>
 #include <ws2tcpip.h>
-#include <io.h>
 #else
 #if defined(__ANDROID__) && __ANDROID_API__ < 28
 #include <sys/syscall.h>
@@ -10,7 +11,6 @@
 #else
 #include <sys/random.h>
 #endif
-#include <sys/socket.h>
 #include <netinet/in.h>
 #include <sys/types.h>
 #include <endian.h>
@@ -25,7 +25,6 @@
 #include <assert.h>
 #include <errno.h>
 #include "wsrelay.h"
-#include "common.h"
 
 // https://en.wikipedia.org/wiki/WebSocket#Protocol
 
@@ -57,21 +56,22 @@ int websocket_connect(struct parsed_url purl) {
     // loop over all returned results
     for (ai = result; ai != NULL && !success; ai = ai->ai_next) {
         fd = socket(ai->ai_family, ai->ai_socktype, ai->ai_protocol);
-        if (fd < 0) {
-            error("socket(): %s.", strerror(errno));
+        if (fd == PLATFORM_NETWORK_REP_INVALID_SOCKET) {
+            error("socket(): " PLATFORM_NETWORK_GET_ERROR_PRINT_TYPE, PLATFORM_NETWORK_GET_ERROR);
             continue;
         }
 
         if (ai->ai_family == AF_INET) {
-            debug("using ipv4.");
+            debug("Using ipv4.");
+            //trace("\tIPv4 address %s\n", inet_ntoa(((struct sockaddr_in*)(struct sockaddr_in*)ai->ai_addr)->sin_addr));
             ((struct sockaddr_in*)ai->ai_addr)->sin_port = htons(purl.port);
         } else if (ai->ai_family == AF_INET6) {
-            debug("using ipv6.");
+            debug("Using ipv6.");
             ((struct sockaddr_in6*)ai->ai_addr)->sin6_port = htons(purl.port);
         }
         
-        if (connect(fd, ai->ai_addr, ai->ai_addrlen) < 0) {
-            error("connect(): %s.", strerror(errno));
+        if (connect(fd, ai->ai_addr, ai->ai_addrlen) == PLATFORM_NETWORK_REP_SOCKET_ERROR) {
+            error("connect(): " PLATFORM_NETWORK_GET_ERROR_PRINT_TYPE, PLATFORM_NETWORK_GET_ERROR);
             continue;
         }
 
@@ -80,19 +80,25 @@ int websocket_connect(struct parsed_url purl) {
 
     freeaddrinfo(result);
 
-    if (!success)
+    if (!success) {
         return NEGFAILURE;
-    else
-        debug("successfuly connected to a server using getaddrinfo!\n");
+        error("Failed to connected to a server!\n");
+    } else {
+        debug("Successfuly connected to a server!\n");
+    }
 
     // tell the server to upgrade the connection 
     const char* message = make_http_header(purl);
     debug("Sending message: %s", message);
 
-    if (send(fd, message, strlen(message), 0) < 0) {
-        error("send(): %s.\n", strerror(errno));
+    if (send(fd, message, strlen(message), 0) == PLATFORM_NETWORK_REP_SOCKET_ERROR) {
+        error("send(): " PLATFORM_NETWORK_GET_ERROR_PRINT_TYPE, PLATFORM_NETWORK_GET_ERROR);
         free((void*)message);
+#if HAVE_WINSOCK2_H
+        closesocket(fd);
+#elif HAVE_SYS_SOCKET_H
         close(fd);
+#endif
         return -1;
     }
 
@@ -120,7 +126,7 @@ int websocket_connect(struct parsed_url purl) {
         free(rrrs.headerslist); return NEGFAILURE;
     }
 
-    debug("Server successfully sent a good response!");
+    debug("Server sent a good response!");
 
     free(rrrs.headerslist);
     return fd;
@@ -180,7 +186,7 @@ int websocket_send(int fd, void* buffer, uint64_t size, enum opcodes opcode, boo
 
 #if LOGGER_COMPILE_OUT != 1 
     if(getalt()->trace) {
-        fprintf(stderr, MAG "[trace] " RESET "masking key: ");
+        fprintf(stderr, MAG "[trace] (" __FUNCTION__ ") " RESET "masking key: ");
         for (int i = 0; i < sizeof(maskingkey); i++)
             fprintf(stderr, "%X ", maskingkey[i]);
         fprintf(stderr, "\n");
@@ -219,7 +225,7 @@ int websocket_send(int fd, void* buffer, uint64_t size, enum opcodes opcode, boo
 
 #if LOGGER_COMPILE_OUT != 1 
         if(getalt()->trace) {
-            fprintf(stderr, MAG "[trace] " RESET "payload: ");
+            fprintf(stderr, MAG "[trace] (" __FUNCTION__ ") " RESET "payload: ");
             for (int i = 0; i < size; i++) {
                 fprintf(stderr, "%X ", payload[header_size + i]);
             }
@@ -246,7 +252,7 @@ int websocket_send(int fd, void* buffer, uint64_t size, enum opcodes opcode, boo
 
 #if LOGGER_COMPILE_OUT != 1 
         if(getalt()->trace) {
-            fprintf(stderr, MAG "[trace] " RESET "payload (masked): ");
+            fprintf(stderr, MAG "[trace] (" __FUNCTION__ ") " RESET "payload (masked): ");
             for (int i = 0; i < size; i++) {
                 fprintf(stderr, "%X ", payload[header_size + i]);
             }
@@ -255,8 +261,8 @@ int websocket_send(int fd, void* buffer, uint64_t size, enum opcodes opcode, boo
 #endif
     }
 
-    if (send(fd, payload, payload_size, 0) < 0) {
-        error("send(): %s.", strerror(errno));
+    if (send(fd, payload, payload_size, 0) == PLATFORM_NETWORK_REP_SOCKET_ERROR) {
+        error("send(): " PLATFORM_NETWORK_GET_ERROR_PRINT_TYPE, PLATFORM_NETWORK_GET_ERROR);
         free(payload);
         return FAILURE;
     }
@@ -275,8 +281,8 @@ struct message websocket_recv(int fd) {
     
     while (FIN != true) {
         uint8_t header[2];
-        if (recv(fd, header, sizeof(header), MSG_WAITALL) <= 0) { // todo: make a test to figure out what recv returns (on linux it's ssize_t, on windows it's int. 4 bytes longer...)
-            error("recv(): %s.", strerror(errno));
+        if (recv(fd, header, sizeof(header), MSG_WAITALL) == PLATFORM_NETWORK_REP_SOCKET_ERROR) { // todo: make a test to figure out what recv returns (on linux it's ssize_t, on windows it's int. 4 bytes longer...)
+            error("recv(): " PLATFORM_NETWORK_GET_ERROR_PRINT_TYPE, PLATFORM_NETWORK_GET_ERROR);
             msg.error = EXIT_FAILURE; return msg;
         }
 
@@ -301,15 +307,15 @@ struct message websocket_recv(int fd) {
         uint64_t payload_size = header[1] & 0b01111111;
 
         if (payload_size == 126) {
-            if (recv(fd, (char*)&payload_size, sizeof(uint16_t), 0) <= 0) {
-                error("recv(): %s.", strerror(errno));
+            if (recv(fd, (char*)&payload_size, sizeof(uint16_t), 0) == PLATFORM_NETWORK_REP_SOCKET_ERROR) {
+                error("recv(): " PLATFORM_NETWORK_GET_ERROR_PRINT_TYPE, PLATFORM_NETWORK_GET_ERROR);
                 msg.error = FAILURE; return msg;
             }
             payload_size = htons(payload_size);
         }
         else if (payload_size == 127) {
-            if (recv(fd, (char*)&payload_size, sizeof(uint64_t), 0) <= 0) {
-                error("recv(): %s.", strerror(errno));
+            if (recv(fd, (char*)&payload_size, sizeof(uint64_t), 0) == PLATFORM_NETWORK_REP_SOCKET_ERROR) {
+                error("recv(): " PLATFORM_NETWORK_GET_ERROR_PRINT_TYPE, PLATFORM_NETWORK_GET_ERROR);
                 msg.error = FAILURE; return msg;
             }
 #if defined(_WIN32)
@@ -329,15 +335,15 @@ struct message websocket_recv(int fd) {
                 resizebuffer(((struct message_data*)msg.msgdata)->buffer, ((struct message_data*)msg.msgdata)->size + payload_size);
             }
             
-            if (recv(fd, (uint8_t*)(((struct message_data*)msg.msgdata)->buffer) + ((struct message_data*)msg.msgdata)->size, payload_size, MSG_WAITALL) <= 0) {
-                trace("recv(): %s.", strerror(errno));
+            if (recv(fd, (uint8_t*)(((struct message_data*)msg.msgdata)->buffer) + ((struct message_data*)msg.msgdata)->size, payload_size, MSG_WAITALL) == PLATFORM_NETWORK_REP_SOCKET_ERROR) {
+                trace("recv(): " PLATFORM_NETWORK_GET_ERROR_PRINT_TYPE, PLATFORM_NETWORK_GET_ERROR);
                 free(((struct message_data*)msg.msgdata)->buffer);
                 msg.error = FAILURE; return msg;
             }
 
 #if LOGGER_COMPILE_OUT != 1 
             if(getalt()->trace) {
-                fprintf(stderr, MAG "[trace] " RESET "payload: ");
+                fprintf(stderr, MAG "[trace] (" __FUNCTION__ ") " RESET "payload: ");
                 for (int i = 0; i < payload_size; i++) {
                     fprintf(stderr, "%X ", *(uint8_t *)((uint8_t *)((struct message_data*)msg.msgdata)->buffer + ((struct message_data*)msg.msgdata)->size + i));
                 }

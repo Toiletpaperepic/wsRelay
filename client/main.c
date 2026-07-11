@@ -454,7 +454,7 @@ int main(int argc, char *argv[]) {
             closesocket(threadroutes[threadroutes_total - 1]->in_socket_fd);
 #elif HAVE_SYS_SOCKET_H
             close(threadroutes[threadroutes_total - 1]->in_socket_fd);
-#endif;
+#endif
             free(threadroutes[threadroutes_total - 1]);
             continue;
         }

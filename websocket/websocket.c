@@ -186,7 +186,7 @@ int websocket_send(int fd, void* buffer, uint64_t size, enum opcodes opcode, boo
 
 #if LOGGER_COMPILE_OUT != 1 
     if(getalt()->trace) {
-        fprintf(stderr, MAG "[trace] (" __FUNCTION__ ") " RESET "masking key: ");
+        fprintf(stderr, MAG "[trace] (%s) " RESET "masking key: ", __func__);
         for (int i = 0; i < sizeof(maskingkey); i++)
             fprintf(stderr, "%X ", maskingkey[i]);
         fprintf(stderr, "\n");
@@ -225,7 +225,7 @@ int websocket_send(int fd, void* buffer, uint64_t size, enum opcodes opcode, boo
 
 #if LOGGER_COMPILE_OUT != 1 
         if(getalt()->trace) {
-            fprintf(stderr, MAG "[trace] (" __FUNCTION__ ") " RESET "payload: ");
+            fprintf(stderr, MAG "[trace] (%s) " RESET "payload: ", __func__);
             for (int i = 0; i < size; i++) {
                 fprintf(stderr, "%X ", payload[header_size + i]);
             }
@@ -252,7 +252,7 @@ int websocket_send(int fd, void* buffer, uint64_t size, enum opcodes opcode, boo
 
 #if LOGGER_COMPILE_OUT != 1 
         if(getalt()->trace) {
-            fprintf(stderr, MAG "[trace] (" __FUNCTION__ ") " RESET "payload (masked): ");
+            fprintf(stderr, MAG "[trace] (%s) " RESET "payload (masked): ", __func__);
             for (int i = 0; i < size; i++) {
                 fprintf(stderr, "%X ", payload[header_size + i]);
             }
@@ -343,7 +343,7 @@ struct message websocket_recv(int fd) {
 
 #if LOGGER_COMPILE_OUT != 1 
             if(getalt()->trace) {
-                fprintf(stderr, MAG "[trace] (" __FUNCTION__ ") " RESET "payload: ");
+                fprintf(stderr, MAG "[trace] (%s) " RESET "payload: ", __func__);
                 for (int i = 0; i < payload_size; i++) {
                     fprintf(stderr, "%X ", *(uint8_t *)((uint8_t *)((struct message_data*)msg.msgdata)->buffer + ((struct message_data*)msg.msgdata)->size + i));
                 }

@@ -9,6 +9,10 @@
 const char* description = "This is a description!";
 
 int main() {
+#if LOGGER_COMPILE_OUT != 1 
+    setuplogger();
+#endif
+
     {
         char* argv[] = {"./a.out", /*"--test",*/ "--thisisabool", "--thisisastring", "Hello, World!", "--thisisaint", "-1", "--thisisaunsignedint", "1"}; 
         int argc = sizeof(argv) / sizeof(char*);

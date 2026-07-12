@@ -1,3 +1,6 @@
+#ifndef WEBSOCKET_STATUS_CODES_H
+#define WEBSOCKET_STATUS_CODES_H
+
 enum status_code {
     // non standard 
     none = 0,
@@ -20,3 +23,4 @@ enum status_code {
     // 3000–3999, Reserved...
     // 4000–4999, Private use...
 };
+#endif

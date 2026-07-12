@@ -1,3 +1,6 @@
+#ifndef COMMON_DLL_EXPORT_H
+#define COMMON_DLL_EXPORT_H
+
 #if defined(DLL_EXPORT)
 // already included
 #elif defined(_WIN32)
@@ -6,4 +9,5 @@
 #else
 // leave it empty if system is on not on windows.
 #define DLL_EXPORT 
+#endif
 #endif

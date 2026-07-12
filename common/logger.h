@@ -1,3 +1,6 @@
+#ifndef COMMON_LOGGER_H
+#define COMMON_LOGGER_H
+
 #if !defined(LOGGER_COMPILE_OUT)
 #define LOGGER_COMPILE_OUT 0
 #endif
@@ -45,4 +48,5 @@ DLL_EXPORT struct allowed_log_types* getalt();
 #define info(format, ...) stderrprint(format, ##__VA_ARGS__)
 #define debug(format, ...) 
 #define trace(format, ...) 
+#endif
 #endif

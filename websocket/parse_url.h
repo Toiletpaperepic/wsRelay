@@ -1,3 +1,6 @@
+#ifndef WEBSOCKET_PARSE_URL_H
+#define WEBSOCKET_PARSE_URL_H
+
 #include "dll_export.h"
 #include <stdint.h>
 
@@ -15,3 +18,4 @@ struct parsed_url {
 };
 
 DLL_EXPORT struct parsed_url parse_url(const char* url);
+#endif

@@ -1,3 +1,6 @@
+#ifndef WEBSOCKET_WEBSOCKET_H
+#define WEBSOCKET_WEBSOCKET_H
+
 #include "dll_export.h"
 #include "opcodes.h"
 #include <stdbool.h>
@@ -17,3 +20,4 @@ struct message {
 DLL_EXPORT int websocket_send(int fd, void* buffer, uint64_t size, enum opcodes opcode, bool FIN);
 DLL_EXPORT struct message websocket_recv(int fd);
 DLL_EXPORT int websocket_connect(struct parsed_url purl);
+#endif

@@ -1,3 +1,6 @@
+#ifndef COMMON_MACROS_H
+#define COMMON_MACROS_H
+
 #if !defined(RESIZEBUFFER_CUSTOM_ERROR)
 #define RESIZEBUFFER_CUSTOM_ERROR 0
 #endif
@@ -65,4 +68,5 @@
 #define PLATFORM_NETWORK_REP_INVALID_SOCKET NEGFAILURE
 #else
 #error No implementation found for networking!
+#endif
 #endif

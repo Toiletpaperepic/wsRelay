@@ -1,3 +1,6 @@
+#ifndef CHECK_H
+#define CHECK_H
+
 #include "common.h"
 
 #ifndef CHECK_CUSTOM_ERROR_HANDLE
@@ -38,4 +41,5 @@
         return 1;                                                                                                        \
     }                                                                                                                    \
 
+#endif
 #endif

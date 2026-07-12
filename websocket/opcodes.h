@@ -1,3 +1,6 @@
+#ifndef WEBSOCKET_OPCODES_H
+#define WEBSOCKET_OPCODES_H
+
 // https://en.wikipedia.org/wiki/WebSocket#Opcodes
 
 enum opcodes {
@@ -10,3 +13,4 @@ enum opcodes {
     PONG = 10,
     // 11–15 Reserved...
 };
+#endif

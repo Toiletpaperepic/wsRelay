@@ -1,3 +1,6 @@
+#ifndef CLIENT_ARGS_H
+#define CLIENT_ARGS_H
+
 enum argType {
     IS_BOOL,
     IS_UNSIGNED_INT,
@@ -27,3 +30,4 @@ struct Argument {
 void cleanup_args(struct Argument* nextarg);
 void print_description(struct Argument* nextarg);
 bool parse_args(int argc, char *argv[], struct Argument* registerargs, bool ignore_unknowns);
+#endif

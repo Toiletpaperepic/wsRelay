@@ -46,5 +46,5 @@ jobs:
     - name: Upload Build Artifact
       uses: actions/upload-artifact@v7.0.1
       with:
+        name: build-artifact
         path: ${{github.workspace}}/build/wsrelay-*.*
-        archive: false

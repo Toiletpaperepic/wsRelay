@@ -52,7 +52,7 @@ void version() {
     char* message = malloc(1);
     message[0] = '\0';
     make_user_agent(&message);
-    printf("%s", message);
+    print("%s", message);
     free(message);
 }
 
@@ -333,8 +333,8 @@ int main(int argc, char *argv[]) {
     register_argument(arghelp, &argversion, "help", IS_BOOL, false, "Display this information.")
     
     // second parse
-    register_argument(argaddress, NULL, "address", IS_STRING, true, "Specify where incoming trafic will relay to.");
-    register_argument(argport, &argaddress, "port", IS_UNSIGNED_INT, false, "Bind to specify port (default: 48375).");
+    register_argument(argaddress, NULL, "address", IS_STRING, true, "Specify where incoming trafic will be sent to.");
+    register_argument(argport, &argaddress, "port", IS_UNSIGNED_INT, false, "chose a port to Bind to. (default: 48375).");
 
     if (parse_args(argc, argv, &arghelp, true)) {
         return EXIT_FAILURE;

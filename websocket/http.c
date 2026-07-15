@@ -1,3 +1,4 @@
+#include <openssl/crypto.h>
 #define RESIZEBUFFER_CUSTOM_ERROR 1
 #define STRING_TO_INT_CONVERSION 1
 #include "common.h"
@@ -14,9 +15,9 @@
 #endif
 #include <unistd.h>
 #endif
-
+#include <openssl/opensslv.h>
+#include <openssl/evp.h>
 #include <stdbool.h>
-#include <base64.h>
 #include <stdint.h>
 #include <assert.h>
 #include <stdlib.h>
@@ -50,6 +51,10 @@ void make_user_agent(char** destinationstring) {
     appendchar(destinationstring, PROCESSOR_ARCHITECTURE);
     
     appendchar(destinationstring, "; +https://github.com/Toiletpaperepic/wsRelay/) ");
+
+    appendchar(destinationstring, "OpenSSL/");
+    appendchar(destinationstring, OpenSSL_version(OPENSSL_VERSION_STRING));
+    appendchar(destinationstring, " ");
 
 #if defined(_WIN32)
     char hostname[256];
@@ -119,16 +124,17 @@ const char* make_http_header(struct parsed_url purl) {
 #else
     getrandom(&nonce, sizeof(nonce), 0);
 #endif
-    const char* key = base64_encode_no_lf(&nonce, sizeof(nonce), NULL);
+    const unsigned char key[((4 * sizeof(nonce) / 3) + 3) & ~3]; // https://stackoverflow.com/a/32140193
+    // base64_encode_no_lf(&nonce, sizeof(nonce), NULL);
 
-    assert(strlen(key) == 24);
+    // assert(strlen(key) == 24);
+
+    EVP_EncodeBlock((unsigned char *)key, nonce, sizeof(nonce));
     
     // WebSocket Key: 
     appendchar(&message, "Sec-WebSocket-Key: ");
     appendchar(&message, key);
     appendchar(&message, "\r\n");
-
-    free((void*)key);
 
     // Blank Line (end of request)
     appendchar(&message, "\r\n");

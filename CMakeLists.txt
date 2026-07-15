@@ -94,12 +94,8 @@ if(HAVE___BUILTIN_ADD_OVERFLOW)
 endif()
 
 # ----------utils----------
-add_library(base64
-    utils/base64/base64.c
-    utils/base64/base64.h
-)
 
-target_include_directories(base64 PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/utils/base64)
+find_package(OpenSSL)
 
 add_library(common SHARED
     common/dll_export.h    
@@ -138,7 +134,7 @@ add_library(websocket SHARED
 )
 
 target_include_directories(websocket PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/websocket)
-target_link_libraries(websocket PUBLIC base64 common)
+target_link_libraries(websocket PUBLIC OpenSSL::SSL common)
 if(WIN32)
     find_library(WS2_32_LIBRARY ws2_32)
     find_library(BCRYPT_LIBRARY bcrypt)

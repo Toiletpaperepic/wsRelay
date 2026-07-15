@@ -281,7 +281,7 @@ struct message websocket_recv(int fd) {
     
     while (FIN != true) {
         uint8_t header[2];
-        if (recv(fd, header, sizeof(header), MSG_WAITALL) == PLATFORM_NETWORK_REP_SOCKET_ERROR) { // todo: make a test to figure out what recv returns (on linux it's ssize_t, on windows it's int. 4 bytes longer...)
+        if (recv(fd, header, sizeof(header), MSG_WAITALL) PLATFORM_NETWORK_RECV_REP_SOCKET_ERROR) { // todo: make a test to figure out what recv returns (on linux it's ssize_t, on windows it's int. 4 bytes longer...)
             error("recv(): " PLATFORM_NETWORK_GET_ERROR_PRINT_TYPE, PLATFORM_NETWORK_GET_ERROR);
             msg.error = EXIT_FAILURE; return msg;
         }
@@ -307,14 +307,14 @@ struct message websocket_recv(int fd) {
         uint64_t payload_size = header[1] & 0b01111111;
 
         if (payload_size == 126) {
-            if (recv(fd, (char*)&payload_size, sizeof(uint16_t), 0) == PLATFORM_NETWORK_REP_SOCKET_ERROR) {
+            if (recv(fd, (char*)&payload_size, sizeof(uint16_t), 0) PLATFORM_NETWORK_RECV_REP_SOCKET_ERROR) {
                 error("recv(): " PLATFORM_NETWORK_GET_ERROR_PRINT_TYPE, PLATFORM_NETWORK_GET_ERROR);
                 msg.error = FAILURE; return msg;
             }
             payload_size = htons(payload_size);
         }
         else if (payload_size == 127) {
-            if (recv(fd, (char*)&payload_size, sizeof(uint64_t), 0) == PLATFORM_NETWORK_REP_SOCKET_ERROR) {
+            if (recv(fd, (char*)&payload_size, sizeof(uint64_t), 0) PLATFORM_NETWORK_RECV_REP_SOCKET_ERROR) {
                 error("recv(): " PLATFORM_NETWORK_GET_ERROR_PRINT_TYPE, PLATFORM_NETWORK_GET_ERROR);
                 msg.error = FAILURE; return msg;
             }
@@ -335,7 +335,7 @@ struct message websocket_recv(int fd) {
                 resizebuffer(((struct message_data*)msg.msgdata)->buffer, ((struct message_data*)msg.msgdata)->size + payload_size);
             }
             
-            if (recv(fd, (uint8_t*)(((struct message_data*)msg.msgdata)->buffer) + ((struct message_data*)msg.msgdata)->size, payload_size, MSG_WAITALL) == PLATFORM_NETWORK_REP_SOCKET_ERROR) {
+            if (recv(fd, (uint8_t*)(((struct message_data*)msg.msgdata)->buffer) + ((struct message_data*)msg.msgdata)->size, payload_size, MSG_WAITALL) PLATFORM_NETWORK_RECV_REP_SOCKET_ERROR) {
                 trace("recv(): " PLATFORM_NETWORK_GET_ERROR_PRINT_TYPE, PLATFORM_NETWORK_GET_ERROR);
                 free(((struct message_data*)msg.msgdata)->buffer);
                 msg.error = FAILURE; return msg;

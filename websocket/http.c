@@ -154,7 +154,7 @@ struct http_response_read_result read_http_response_header(int fd) {
     {
         unsigned int cursor = 4;
 
-        if (recv(fd, ((struct http_response_read_result_successful*)rrr.data)->buffer, cursor, MSG_WAITALL) == PLATFORM_NETWORK_REP_SOCKET_ERROR) {
+        if (recv(fd, ((struct http_response_read_result_successful*)rrr.data)->buffer, cursor, MSG_WAITALL) PLATFORM_NETWORK_RECV_REP_SOCKET_ERROR) {
             error("recv(): %s.", strerror(errno));
 #if HAVE_WINSOCK2_H
             closesocket(fd);
@@ -171,7 +171,7 @@ struct http_response_read_result read_http_response_header(int fd) {
                 rrr.error = FAILURE; return rrr;
             }
     
-            if (recv(fd, ((struct http_response_read_result_successful*)rrr.data)->buffer + cursor, 1, MSG_WAITALL) == PLATFORM_NETWORK_REP_SOCKET_ERROR) {
+            if (recv(fd, ((struct http_response_read_result_successful*)rrr.data)->buffer + cursor, 1, MSG_WAITALL) PLATFORM_NETWORK_RECV_REP_SOCKET_ERROR) {
                 error("recv(): %s.", strerror(errno));
 #if HAVE_WINSOCK2_H
                 closesocket(fd);

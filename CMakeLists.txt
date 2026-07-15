@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.31.6)
-project(wsrelay VERSION 0.0.2 LANGUAGES C)
+project(wsrelay VERSION 0.0.3 LANGUAGES C)
 set(CMAKE_C_STANDARD 99)
 
 add_compile_definitions(

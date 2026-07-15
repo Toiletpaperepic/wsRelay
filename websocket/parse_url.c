@@ -3,7 +3,7 @@
 #include <string.h>
 #include "parse_url.h"
 #define STRING_TO_INT_CONVERSION 1
-#include "common.h"
+#include "other.h"
 
 struct parsed_url parse_url(const char* url) {
     struct parsed_url purl;

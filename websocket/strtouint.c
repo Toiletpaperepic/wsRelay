@@ -3,7 +3,7 @@
 #define STRING_TO_INT_CONVERSION 1
 #include "strtouint.h"
 #define CHECKED_ARITHMETIC 1
-#include "common.h"
+#include "other.h"
 
 #define STR_TO_X_BUILDER(type, is_negative)                                                                                                       \
     for (type i = is_negative ? 1 : 0; str[i] != '\0'; i++) {                                                                                     \

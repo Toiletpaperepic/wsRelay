@@ -1,7 +1,7 @@
 #include <openssl/crypto.h>
 #define RESIZEBUFFER_CUSTOM_ERROR 1
 #define STRING_TO_INT_CONVERSION 1
-#include "common.h"
+#include "other.h"
 #include PLATFORM_NETWORK_HEADER
 
 #if defined(_WIN32)

@@ -1,7 +1,8 @@
-#ifndef COMMON_COMMON_H
-#define COMMON_COMMON_H
+#ifndef WEBSOCKET_OTHER_H
+#define WEBSOCKET_OTHER_H
 
 #include "logger.h"
 #include "macros.h"
 #include "strtouint.h"
+
 #endif

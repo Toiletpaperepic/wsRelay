@@ -1,5 +1,5 @@
-#ifndef COMMON_DLL_EXPORT_H
-#define COMMON_DLL_EXPORT_H
+#ifndef WEBSOCKET_DLL_EXPORT_H
+#define WEBSOCKET_DLL_EXPORT_H
 
 #if defined(DLL_EXPORT)
 // already included

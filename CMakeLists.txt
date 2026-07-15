@@ -97,22 +97,6 @@ endif()
 
 find_package(OpenSSL)
 
-add_library(common SHARED
-    common/dll_export.h    
-    common/strtouint.c
-    common/strtouint.h
-    common/logger.c
-    common/logger.h
-    common/macros.h
-)
-target_include_directories(common PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/common)
-set_target_properties(common PROPERTIES
-    OUTPUT_NAME ${PROJECT_NAME}-common
-    VERSION ${CMAKE_PROJECT_VERSION}
-    SOVERSION 1
-)
-install(TARGETS common LIBRARY DESTINATION lib)
-
 if(NOT HAVE___BUILTIN_ADD_OVERFLOW AND NOT HAVE___BUILTIN_MUL_OVERFLOW AND NOT HAVE_STDCKDINT_H)
     file(DOWNLOAD https://github.com/jart/jtckdint/raw/refs/heads/master/jtckdint.h ${CMAKE_CURRENT_BINARY_DIR}/downloads/include/jtckdint.h SHOW_PROGRESS EXPECTED_HASH SHA256=4a2bbbf4992384c17a332bfb3b4246f90bb84aa9b3282e1b966091981f1c2bb7)
     file(DOWNLOAD https://github.com/jart/jtckdint/raw/refs/heads/master/LICENSE.txt ${CMAKE_CURRENT_BINARY_DIR}/downloads/license/jtckdint/LICENSE SHOW_PROGRESS EXPECTED_HASH SHA256=c2b829605ee9c0b05c5c3708f308fc9b0954fb6ad1e0ab1add85f740a8827497)
@@ -122,6 +106,12 @@ endif()
 
 # --------websocket--------
 add_library(websocket SHARED
+    websocket/dll_export.h    
+    websocket/strtouint.c
+    websocket/strtouint.h
+    websocket/logger.c
+    websocket/logger.h
+    websocket/macros.h
     websocket/http.c
     websocket/http.h
     websocket/opcodes.h
@@ -134,7 +124,7 @@ add_library(websocket SHARED
 )
 
 target_include_directories(websocket PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/websocket)
-target_link_libraries(websocket PUBLIC OpenSSL::SSL common)
+target_link_libraries(websocket PUBLIC OpenSSL::SSL)
 if(WIN32)
     find_library(WS2_32_LIBRARY ws2_32)
     find_library(BCRYPT_LIBRARY bcrypt)
@@ -158,7 +148,7 @@ add_executable(client
     client/socket.h
 )
 
-target_link_libraries(client PUBLIC websocket common)
+target_link_libraries(client PUBLIC websocket)
 set_property(TARGET client PROPERTY OUTPUT_NAME ${PROJECT_NAME})
 install(TARGETS client RUNTIME DESTINATION bin)
 # -------------------------
@@ -178,7 +168,7 @@ add_executable(commandline
     client/args.h
 )
 
-target_link_libraries(commandline PUBLIC common)
+target_link_libraries(commandline PUBLIC websocket)
 endtest(commandline)
 
 add_executable(parse_url
@@ -187,7 +177,7 @@ add_executable(parse_url
     websocket/parse_url.h
 )
 
-target_link_libraries(parse_url PUBLIC common)
+target_link_libraries(parse_url PUBLIC websocket)
 endtest(parse_url)
 
 # -------------------------
@@ -195,7 +185,6 @@ endtest(parse_url)
 include(GNUInstallDirs)
 set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE")
 install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE" DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/licenses/${PROJECT_NAME}")
-install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/utils/base64/LICENSE" DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/licenses/${PROJECT_NAME}/wpa_supplicant and hostapd")
 if(NOT HAVE___BUILTIN_ADD_OVERFLOW AND NOT HAVE___BUILTIN_MUL_OVERFLOW AND NOT HAVE_STDCKDINT_H)
     install(FILES "${CMAKE_CURRENT_BINARY_DIR}/downloads/license/jtckdint/LICENSE" DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/licenses/${PROJECT_NAME}/jtckdint")
 endif()

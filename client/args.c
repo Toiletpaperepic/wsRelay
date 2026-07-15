@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 #define STRING_TO_INT_CONVERSION 1
-#include "common.h"
+#include "other.h"
 #include "args.h"
 
 void print_description(struct Argument* nextarg) {

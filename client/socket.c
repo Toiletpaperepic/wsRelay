@@ -5,7 +5,7 @@
 #endif
 #include <string.h>
 #include <errno.h>
-#include "common.h"
+#include "other.h"
 #include "socket.h"
 
 PLATFORM_REP_SOCKET socket_bind(uint32_t addr, uint16_t port) {

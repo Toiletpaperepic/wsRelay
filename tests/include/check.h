@@ -1,7 +1,7 @@
 #ifndef CHECK_H
 #define CHECK_H
 
-#include "common.h"
+#include "other.h"
 
 #ifndef CHECK_CUSTOM_ERROR_HANDLE
 #define CHECK_CUSTOM_ERROR_HANDLE 0

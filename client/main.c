@@ -1,5 +1,5 @@
 #define RESIZEBUFFER_CUSTOM_ERROR 1
-#include "common.h"
+#include "other.h"
 #include PLATFORM_NETWORK_HEADER
 
 #if HAVE_WINSOCK2_H

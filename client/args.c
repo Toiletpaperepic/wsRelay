@@ -1,3 +1,4 @@
+#include "logger.h"
 #include <stdbool.h>
 #include <assert.h>
 #include <stdint.h>
@@ -87,7 +88,7 @@ bool parse_args(int argc, char *argv[], struct Argument* registerargs, bool igno
 
             if (nextarg->next == NULL) {
                 if (ignore_unknowns) {
-                    return false;
+                    break;
                 } else {
                     error("Unknown command: %s", argv[i]);
 
